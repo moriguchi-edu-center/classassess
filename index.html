@@ -724,6 +724,28 @@
       position: relative;
       overflow: visible;
     }
+    .item-charts .chart-wrap.bar-chart {
+      aspect-ratio: 5 / 4;
+      max-width: 320px;
+    }
+    .item-block .legend-compact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 8px;
+      justify-content: center;
+      margin: 0 0 6px;
+      font-size: 0.78rem;
+    }
+    .item-block .legend-compact .leg-item {
+      padding: 3px 8px 3px 6px;
+      gap: 5px;
+      box-shadow: none;
+    }
+    .item-block .legend-compact .leg-item i {
+      width: 1em;
+      height: 1em;
+      font-size: 0.68em;
+    }
     .item-charts .chart-wrap canvas {
       display: block;
       width: 100% !important;
@@ -736,6 +758,9 @@
       width: 100%;
       aspect-ratio: 1;
       overflow: visible;
+    }
+    .chart-wrap-popup.bar-chart {
+      aspect-ratio: 5 / 4;
     }
     .chart-wrap-popup canvas {
       display: block;
@@ -917,7 +942,16 @@
       align-items: center;
     }
     .modal-chart-wrap .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 8px;
+      justify-content: center;
       margin: 0 0 8px;
+    }
+    .modal-chart-wrap .legend .leg-item {
+      padding: 3px 8px 3px 6px;
+      font-size: 0.82rem;
+      box-shadow: none;
     }
     .modal-chart-wrap {
       position: relative;
@@ -1379,16 +1413,24 @@
     <section class="panel no-print data-only" id="metaPanel">
       <h2>学級情報</h2>
       <div class="meta-grid">
+        <label>学年段階
+          <select id="gradeBand">
+            <option value="upper">高学年～中学生（15項目）</option>
+            <option value="middle">中学年（10項目）</option>
+            <option value="lower">低学年（わたしパワー・10項目）</option>
+          </select>
+        </label>
         <label>学年<input type="text" id="metaGrade" placeholder="例: 5年" /></label>
         <label>組<input type="text" id="metaClass" placeholder="例: 2組" /></label>
         <label>担任等<input type="text" id="metaTeacher" placeholder="任意" /></label>
         <label>備考<input type="text" id="metaNote" placeholder="任意" /></label>
       </div>
+      <p id="gradeBandHint" style="margin:10px 0 0;color:var(--muted);font-size:0.85rem;">高学年～中学生用（15項目）の設問に合わせて集計します。低・中学年のアンケートを使うときは、先に学年段階を切り替えてください。</p>
     </section>
 
     <section class="panel no-print data-only" id="uploadPanel">
       <h2>回答データの登録（第1〜4回）</h2>
-      <p style="margin:0 0 12px;color:var(--muted);font-size:0.9rem;">読み込む表は <strong>FormsのExcelと同じ形式（Sheet1）</strong> です。Forms出力でも、共同編集ブック（個人シート→Sheet1に集約）でも、そのまま登録できます。読み込み後は下のグラフを確認し、必要なら<strong>画像で書き出して</strong>共有できます。</p>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:0.9rem;">読み込む表は <strong>FormsのExcelと同じ形式（Sheet1）</strong> です。選んだ学年段階の項目数に合わせて集計します。読み込み後は下のグラフを確認し、必要なら<strong>画像で書き出して</strong>共有できます。</p>
       <div class="rounds" id="rounds">
         <div class="round-card" data-round="0" style="--round-color:#2a9aa6">
           <h3><i class="dot" style="background:#2a9aa6"></i>第1回</h3>
@@ -1578,53 +1620,160 @@
     { border: "#9b6fc0", fill: "rgba(155,111,192,0.08)", softBg: "#f3ecf8", ink: "#684085" },
   ];
 
-  const ITEMS = [
-    { id: 0, no: "①", short: "目標", desc: "みんなで決めた目標やめあてに力を合わせてとりくんでいる", keywords: ["目標やめあて", "目標や目あて", "力を合わせて", "めあてに力"] },
-    { id: 1, no: "②", short: "改善", desc: "自分たちの学習や生活をよくするための話し合いや活動をしている", keywords: ["よくするための話し合い", "学習や生活をよく", "改善"] },
-    { id: 2, no: "③", short: "役割", desc: "係や当番の活動に責任を持ってとりくむ", keywords: ["係や当番", "責任を持って", "役割"] },
-    { id: 3, no: "④", short: "聞く姿勢", desc: "発言している人の話を最後までしっかりと聞いている", keywords: ["最後までしっかり", "話を最後まで", "聞く姿勢", "しっかりと聞"] },
-    { id: 4, no: "⑤", short: "つながり", desc: "友だちの話に賛成・反対・つけたしと、つなげられるように発言している", keywords: ["賛成・反対", "賛成反対", "つけたし", "つなげ"] },
-    { id: 5, no: "⑥", short: "積極性", desc: "話し合いの時、考えや意見を進んで出し合う", keywords: ["進んで出し", "考えや意見を進んで", "積極"] },
-    { id: 6, no: "⑦", short: "支え合い", desc: "勉強・運動・そうじ・給食などで、教え合いや助け合いをしている", keywords: ["教え合い", "助け合い", "支え合"] },
-    { id: 7, no: "⑧", short: "仲直り", desc: "すなおに「ごめんね」と言って、仲直りができる", keywords: ["ごめんね", "仲直り"] },
-    { id: 8, no: "⑨", short: "感謝", desc: "「ありがとう」を伝え合っている", keywords: ["ありがとう", "感謝"] },
-    { id: 9, no: "⑩", short: "認め合い", desc: "友だちのよいところやがんばっているところを伝え合っている", keywords: ["よいところ", "がんばっているところ", "認め合"] },
-    { id: 10, no: "⑪", short: "尊重", desc: "友だちの心を傷つけることを言ったり、からかったりしない", keywords: ["傷つけ", "からかったり", "尊重"] },
-    { id: 11, no: "⑫", short: "仲間", desc: "だれとでも遊んだり、グループになったりすることができる", keywords: ["だれとでも", "誰とでも", "グループになったり"] },
-    { id: 12, no: "⑬", short: "学習", desc: "授業中にむだなおしゃべりをしない", keywords: ["むだなおしゃべり", "無駄なおしゃべり", "授業中に"] },
-    { id: 13, no: "⑭", short: "生活", desc: "ろうかを走らない、あいさつをするなど、学校のきまりを守っている", keywords: ["ろうかを走", "廊下を走", "あいさつ", "きまりを守"] },
-    { id: 14, no: "⑮", short: "校外", desc: "校外ではひとのめいわくにならないように考えて行動できる", keywords: ["校外", "めいわく", "迷惑"] },
-  ];
+  const CIRCLED = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫", "⑬", "⑭", "⑮"];
 
-  const FORCES = [
-    { name: "目標をやりとげる力", hint: "目標・改善・役割の3つ", itemIds: [0, 1, 2] },
-    { name: "話をつなげる力", hint: "聞く姿勢・つながり・積極性の3つ", itemIds: [3, 4, 5] },
-    { name: "友だちを支える力", hint: "支え合い・仲直り・感謝の3つ", itemIds: [6, 7, 8] },
-    { name: "安心を生む力", hint: "認め合い・尊重・仲間の3つ", itemIds: [9, 10, 11] },
-    { name: "きまりを守る力", hint: "学習・生活・校外の3つ", itemIds: [12, 13, 14] },
-  ];
-
-  const SKIP_HEADERS = [
-    "id", "開始時刻", "完了時刻", "メール", "名前", "氏名", "name", "email",
-    "start time", "completion time", "最終変更時刻", "respondent",
-  ];
-
-  const DEFAULT_SCORE_MAP = [
+  const SCORE_MAP_COMMON = [
     { text: "とてもそう思う", score: 4 },
     { text: "そう思う", score: 3 },
     { text: "あまりそう思わない", score: 2 },
     { text: "そう思わない", score: 1 },
+    { text: "とてもあてはまる", score: 4 },
+    { text: "少しあてはまる", score: 3 },
+    { text: "あまりあてはまらない", score: 2 },
+    { text: "まったくあてはまらない", score: 1 },
     { text: "よくあてはまる", score: 4 },
     { text: "ややあてはまる", score: 3 },
-    { text: "あまりあてはまらない", score: 2 },
     { text: "あてはまらない", score: 1 },
+    { text: "はいそうです", score: 4 },
+    { text: "すこしそうです", score: 3 },
+    { text: "すこしちがいます", score: 2 },
+    { text: "いいえちがいます", score: 1 },
     { text: "4", score: 4 },
     { text: "3", score: 3 },
     { text: "2", score: 2 },
     { text: "1", score: 1 },
   ];
 
-  /** @type {Array<null|{round:number,fileName:string,responseCount:number,itemAverages:number[],forcePercents:number[],rawHeaders:string[],rawRows:any[][],columnMap:number[]}>} */
+  function makeItems(defs) {
+    return defs.map((d, id) => ({
+      id,
+      no: CIRCLED[id] || String(id + 1),
+      short: d.short,
+      desc: d.desc,
+      keywords: d.keywords,
+    }));
+  }
+
+  const GRADE_BANDS = {
+    upper: {
+      id: "upper",
+      label: "高学年～中学生",
+      shortLabel: "高学年～中学生（15項目）",
+      axisWord: "力",
+      resultHeading: "全体グラフ（5つの力）",
+      guideTitle: "5つの力って、どんな行動のこと？",
+      summaryTitle: "5つの力の数値（％）",
+      items: makeItems([
+        { short: "目標", desc: "みんなで決めた目標やめあてに力を合わせてとりくんでいる", keywords: ["目標やめあて", "目標や目あて", "力を合わせて", "めあてに力"] },
+        { short: "改善", desc: "自分たちの学習や生活をよくするための話し合いや活動をしている", keywords: ["よくするための話し合い", "学習や生活をよく", "改善"] },
+        { short: "役割", desc: "係や当番の活動に責任を持ってとりくむ", keywords: ["係や当番", "責任を持って", "役割"] },
+        { short: "聞く姿勢", desc: "発言している人の話を最後までしっかりと聞いている", keywords: ["最後までしっかり", "話を最後まで", "聞く姿勢", "しっかりと聞"] },
+        { short: "つながり", desc: "友だちの話に賛成・反対・つけたしと、つなげられるように発言している", keywords: ["賛成・反対", "賛成反対", "つけたし", "つなげ"] },
+        { short: "積極性", desc: "話し合いの時、考えや意見を進んで出し合う", keywords: ["進んで出し", "考えや意見を進んで", "積極"] },
+        { short: "支え合い", desc: "勉強・運動・そうじ・給食などで、教え合いや助け合いをしている", keywords: ["教え合い", "助け合い", "支え合"] },
+        { short: "仲直り", desc: "すなおに「ごめんね」と言って、仲直りができる", keywords: ["ごめんね", "仲直り"] },
+        { short: "感謝", desc: "「ありがとう」を伝え合っている", keywords: ["ありがとう", "感謝"] },
+        { short: "認め合い", desc: "友だちのよいところやがんばっているところを伝え合っている", keywords: ["よいところ", "がんばっているところ", "認め合"] },
+        { short: "尊重", desc: "友だちの心を傷つけることを言ったり、からかったりしない", keywords: ["傷つけ", "からかったり", "尊重"] },
+        { short: "仲間", desc: "だれとでも遊んだり、グループになったりすることができる", keywords: ["だれとでも", "誰とでも", "グループになったり"] },
+        { short: "学習", desc: "授業中にむだなおしゃべりをしない", keywords: ["むだなおしゃべり", "無駄なおしゃべり", "授業中に"] },
+        { short: "生活", desc: "ろうかを走らない、あいさつをするなど、学校のきまりを守っている", keywords: ["ろうかを走", "廊下を走", "あいさつ", "きまりを守"] },
+        { short: "校外", desc: "校外ではひとのめいわくにならないように考えて行動できる", keywords: ["校外", "めいわく", "迷惑"] },
+      ]),
+      forces: [
+        { name: "目標をやりとげる力", hint: "目標・改善・役割の3つ", itemIds: [0, 1, 2] },
+        { name: "話をつなげる力", hint: "聞く姿勢・つながり・積極性の3つ", itemIds: [3, 4, 5] },
+        { name: "友だちを支える力", hint: "支え合い・仲直り・感謝の3つ", itemIds: [6, 7, 8] },
+        { name: "安心を生む力", hint: "認め合い・尊重・仲間の3つ", itemIds: [9, 10, 11] },
+        { name: "きまりを守る力", hint: "学習・生活・校外の3つ", itemIds: [12, 13, 14] },
+      ],
+    },
+    middle: {
+      id: "middle",
+      label: "中学年",
+      shortLabel: "中学年（10項目）",
+      axisWord: "力",
+      resultHeading: "全体グラフ（5つの力）",
+      guideTitle: "5つの力って、どんな行動のこと？",
+      summaryTitle: "5つの力の数値（％）",
+      items: makeItems([
+        { short: "目標", desc: "みんなで決めたもくひょうやめあてに力をあわせてとりくんでいる", keywords: ["もくひょうやめあて", "目標やめあて", "力をあわせて", "力を合わせて"] },
+        { short: "役割", desc: "かかりやとうばんの活動にすすんでとりくむ", keywords: ["かかりやとうばん", "係や当番", "すすんでとりくむ", "役割"] },
+        { short: "聞く姿勢", desc: "発言している人の話をさいごまでしっかりと聞いている", keywords: ["さいごまでしっかり", "最後までしっかり", "聞く姿勢"] },
+        { short: "つながり", desc: "友だちの話に賛成・反対・つけたしと、つなげるように発言している", keywords: ["賛成・反対", "つけたし", "つなげるように"] },
+        { short: "支え合い", desc: "勉強・運動・そうじ・給食などで、教えあいや助けあいをしている", keywords: ["教えあい", "助けあい", "教え合い", "助け合い", "支え合"] },
+        { short: "仲直り", desc: "すなおに「ごめんね」と言って、なかなおりができる", keywords: ["ごめんね", "なかなおり", "仲直り"] },
+        { short: "尊重", desc: "友だちの心をきずつけることを言ったり、からかったりしない", keywords: ["きずつける", "傷つけ", "からかったり", "尊重"] },
+        { short: "仲間", desc: "だれとでも遊んだり、グループになったりすることができる", keywords: ["だれとでも", "グループになったり", "仲間"] },
+        { short: "学習", desc: "じゅぎょう中にむだなおしゃべりをしない", keywords: ["むだなおしゃべり", "じゅぎょう中", "授業中"] },
+        { short: "生活", desc: "ろうかを走らない、あいさつをするなど、学校のきまりをまもっている", keywords: ["ろうかを走", "きまりをまも", "きまりを守", "あいさつ"] },
+      ]),
+      forces: [
+        { name: "やりとげる力", hint: "目標・役割の2つ", itemIds: [0, 1] },
+        { name: "話をつなげる力", hint: "聞く姿勢・つながりの2つ", itemIds: [2, 3] },
+        { name: "ささえあう力", hint: "支え合い・仲直りの2つ", itemIds: [4, 5] },
+        { name: "あんしんを生む力", hint: "尊重・仲間の2つ", itemIds: [6, 7] },
+        { name: "きまりをまもる力", hint: "学習・生活の2つ", itemIds: [8, 9] },
+      ],
+    },
+    lower: {
+      id: "lower",
+      label: "低学年",
+      shortLabel: "低学年（わたしパワー・10項目）",
+      axisWord: "パワー",
+      resultHeading: "全体グラフ（5つのパワー）",
+      guideTitle: "5つのパワーって、どんなこと？",
+      summaryTitle: "5つのパワーの数値（％）",
+      items: makeItems([
+        { short: "めあて", desc: "べんきょうやうんどうを、がんばっている", keywords: ["べんきょう", "うんどう", "がんばって", "めあて"] },
+        { short: "かかり", desc: "かかりやとうばんのしごとを、すすんでしている", keywords: ["かかりやとうばん", "とうばんのしごと", "かかり"] },
+        { short: "きく姿勢", desc: "せんせいやともだちのはなしを、さいごまでよくきいている", keywords: ["さいごまでよく", "きくしせい", "きく姿勢", "せんせいやともだち"] },
+        { short: "かんがえ", desc: "かんがえたことやきづいたことを、はっぴょうしている", keywords: ["かんがえたこと", "きづいたこと", "はっぴょう", "かんがえ"] },
+        { short: "ささえあい", desc: "こまっているともだちがいたら、すすんでたすけている", keywords: ["こまっているともだち", "すすんでたすけ", "ささえあい"] },
+        { short: "ありがとう", desc: "やさしくしてくれたひとに、「ありがとう」といっている", keywords: ["ありがとう", "やさしくしてくれた"] },
+        { short: "あんしん", desc: "ともだちのわるくちを、いっていない", keywords: ["わるくち", "あんしん"] },
+        { short: "なかよし", desc: "だれとでも、なかよくあそんだり、べんきょうしたりしている", keywords: ["なかよくあそん", "なかよし", "だれとでも"] },
+        { short: "おしゃべり", desc: "じゅぎょうちゅうに、むだなおしゃべりをしていない", keywords: ["むだなおしゃべり", "じゅぎょうちゅう", "おしゃべり"] },
+        { short: "きまり", desc: "ろうかをはしらないなど、がっこうのきまりをまもっている", keywords: ["ろうかをはし", "がっこうのきまり", "きまり"] },
+      ]),
+      forces: [
+        { name: "がんばりパワー", hint: "めあて・かかりの2つ", itemIds: [0, 1] },
+        { name: "おはなしパワー", hint: "きく姿勢・かんがえの2つ", itemIds: [2, 3] },
+        { name: "おたすけパワー", hint: "ささえあい・ありがとうの2つ", itemIds: [4, 5] },
+        { name: "なかよしパワー", hint: "あんしん・なかよしの2つ", itemIds: [6, 7] },
+        { name: "やくそくパワー", hint: "おしゃべり・きまりの2つ", itemIds: [8, 9] },
+      ],
+    },
+  };
+
+  let gradeBandId = "upper";
+  let ITEMS = GRADE_BANDS.upper.items;
+  let FORCES = GRADE_BANDS.upper.forces;
+
+  function currentBand() {
+    return GRADE_BANDS[gradeBandId] || GRADE_BANDS.upper;
+  }
+
+  function itemCount() {
+    return ITEMS.length;
+  }
+
+  function emptyColumnMap() {
+    return new Array(itemCount()).fill(-1);
+  }
+
+  function forceMaxSum(force) {
+    return force.itemIds.length * 4;
+  }
+
+  const SKIP_HEADERS = [
+    "id", "開始時刻", "完了時刻", "メール", "名前", "氏名", "name", "email",
+    "start time", "completion time", "最終変更時刻", "respondent",
+  ];
+
+  const DEFAULT_SCORE_MAP = SCORE_MAP_COMMON;
+
+    /** @type {Array<null|{round:number,fileName:string,responseCount:number,itemAverages:number[],forcePercents:number[],rawHeaders:string[],rawRows:any[][],columnMap:number[]}>} */
   const rounds = [null, null, null, null];
 
   let lastHeaders = [];
@@ -1668,6 +1817,8 @@
     summaryOverall: document.getElementById("summaryOverall"),
     forceGuide: document.getElementById("forceGuide"),
     printTitle: document.getElementById("printTitle"),
+    gradeBand: document.getElementById("gradeBand"),
+    gradeBandHint: document.getElementById("gradeBandHint"),
     metaGrade: document.getElementById("metaGrade"),
     metaClass: document.getElementById("metaClass"),
     metaTeacher: document.getElementById("metaTeacher"),
@@ -2196,7 +2347,7 @@
 
   function autoMapColumns(headers) {
     const used = new Set();
-    const map = new Array(15).fill(-1);
+    const map = emptyColumnMap();
 
     for (const item of ITEMS) {
       let best = -1;
@@ -2253,11 +2404,12 @@
   }
 
   function aggregate(rows, columnMap) {
-    const sums = new Array(15).fill(0);
-    const counts = new Array(15).fill(0);
+    const n = itemCount();
+    const sums = new Array(n).fill(0);
+    const counts = new Array(n).fill(0);
 
     for (const row of rows) {
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < n; i++) {
         const col = columnMap[i];
         if (col < 0) continue;
         const score = parseScore(row[col]);
@@ -2272,12 +2424,88 @@
       const vals = f.itemIds.map((id) => itemAverages[id]);
       if (vals.some((v) => !Number.isFinite(v))) return NaN;
       const sum = vals.reduce((a, b) => a + b, 0);
-      return (sum / 12) * 100;
+      return (sum / forceMaxSum(f)) * 100;
     });
 
     const responseCount = rows.length;
     const mappedCount = columnMap.filter((c) => c >= 0).length;
     return { itemAverages, forcePercents, responseCount, mappedCount };
+  }
+
+  function updateGradeBandUi() {
+    const band = currentBand();
+    if (el.gradeBand) el.gradeBand.value = gradeBandId;
+    if (el.gradeBandHint) {
+      el.gradeBandHint.textContent =
+        `${band.shortLabel}の設問に合わせて集計します（各${band.axisWord}の％＝項目平均の合計÷${band.forces[0].itemIds.length * 4}×100）。`;
+    }
+    if (el.resultHeading) el.resultHeading.textContent = band.resultHeading;
+    ROLE_COPY.data.heading = band.resultHeading;
+  }
+
+  function applyGradeBand(nextId, { confirmIfData = true } = {}) {
+    const id = GRADE_BANDS[nextId] ? nextId : "upper";
+    if (id === gradeBandId) {
+      updateGradeBandUi();
+      return true;
+    }
+    if (confirmIfData && rounds.some(Boolean)) {
+      const ok = window.confirm(
+        "学年段階を切り替えると、読み込み済みデータの項目対応をやり直します。よろしいですか？"
+      );
+      if (!ok) {
+        updateGradeBandUi();
+        return false;
+      }
+    }
+    gradeBandId = id;
+    const band = currentBand();
+    ITEMS = band.items;
+    FORCES = band.forces;
+    scoreMap = SCORE_MAP_COMMON.map((x) => ({ ...x }));
+    valueLabelOffsets.clear();
+    valueLabelDataSigByScope.clear();
+    updateGradeBandUi();
+    renderScoreMapTable();
+
+    rounds.forEach((r, i) => {
+      if (!r || !r.rawHeaders || !r.rawRows) return;
+      const map = autoMapColumns(r.rawHeaders);
+      const result = aggregate(r.rawRows, map);
+      rounds[i] = {
+        ...r,
+        gradeBandId: id,
+        itemAverages: result.itemAverages,
+        forcePercents: result.forcePercents,
+        responseCount: result.responseCount,
+        columnMap: map,
+      };
+      if (i === lastRoundIndex) {
+        lastHeaders = r.rawHeaders;
+        lastRows = r.rawRows;
+      }
+    });
+
+    const headersForMap = lastHeaders.length
+      ? lastHeaders
+      : (rounds.find(Boolean)?.rawHeaders || []);
+    const mapForUi = headersForMap.length
+      ? (rounds.find(Boolean)?.columnMap || autoMapColumns(headersForMap))
+      : emptyColumnMap();
+    buildManualMapUI(headersForMap, mapForUi);
+    if (el.btnRemap) el.btnRemap.disabled = !rounds.some(Boolean);
+    renderRoundSlots();
+    if (rounds.some(Boolean)) refreshAll();
+    else {
+      destroyCharts();
+      if (el.summaryOverall) el.summaryOverall.innerHTML = "";
+      if (el.forceGuide) el.forceGuide.innerHTML = "";
+      if (el.legendOverall) el.legendOverall.innerHTML = "";
+      if (el.legendItems) el.legendItems.innerHTML = "";
+      if (el.itemCharts) el.itemCharts.innerHTML = "";
+      updateSectionVisibility();
+    }
+    return true;
   }
 
   function pickTargetSheetName(wb) {
@@ -2343,16 +2571,16 @@
       let columnMap = autoMapColumns(headers);
       let result = aggregate(rows, columnMap);
 
-      if (result.mappedCount < 15) {
+      if (result.mappedCount < itemCount()) {
         buildManualMapUI(headers, columnMap);
         showMsg(
-          `第${roundIndex + 1}回: 「${sheetName}」を読み込みました。自動対応できた項目は ${result.mappedCount}/15 です。下の「詳細設定」で列を割り当て、「再集計」を押してください。`,
+          `第${roundIndex + 1}回: 「${sheetName}」を読み込みました。自動対応できた項目は ${result.mappedCount}/${itemCount()} です（${currentBand().shortLabel}）。下の「詳細設定」で列を割り当て、「再集計」を押してください。`,
           "warn"
         );
       } else {
         buildManualMapUI(headers, columnMap);
         showMsg(
-          `第${roundIndex + 1}回: ${file.name} の「${sheetName}」を登録しました（回答 ${result.responseCount} 件・15項目対応）。`,
+          `第${roundIndex + 1}回: ${file.name} の「${sheetName}」を登録しました（回答 ${result.responseCount} 件・${itemCount()}項目対応／${currentBand().shortLabel}）。`,
           "ok"
         );
       }
@@ -2366,6 +2594,7 @@
         rawHeaders: headers,
         rawRows: rows,
         columnMap,
+        gradeBandId,
       };
 
       renderRoundSlots();
@@ -2401,7 +2630,7 @@
   }
 
   function getManualColumnMap() {
-    const map = new Array(15).fill(-1);
+    const map = emptyColumnMap();
     el.manualMap.querySelectorAll("select[data-item]").forEach((sel) => {
       const id = Number(sel.dataset.item);
       map[id] = Number(sel.value);
@@ -2567,13 +2796,45 @@
     ctx.closePath();
   }
 
+  function forceExportLabelLines(ctx, force, maxWidth) {
+    const lines = [force.name];
+    force.itemIds.forEach((id) => {
+      wrapCanvasText(ctx, "・" + itemExportLabel(ITEMS[id]), maxWidth).forEach((line) => {
+        lines.push(line);
+      });
+    });
+    return lines;
+  }
+
+  function measureForcePercentTableH(width, entries) {
+    const padX = 12;
+    const headH = 34;
+    const lineH = 16;
+    const rowPadY = 8;
+    const labelW = Math.min(420, Math.floor(width * 0.62));
+    const measure = document.createElement("canvas").getContext("2d");
+    measure.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    let tableH = headH + 12;
+    FORCES.forEach((f) => {
+      const lines = forceExportLabelLines(measure, f, labelW - 4);
+      tableH += Math.max(40, lines.length * lineH + rowPadY * 2);
+    });
+    return tableH;
+  }
+
   function drawForcePercentTable(ctx, x, y, width, entries) {
     const padX = 12;
-    const rowH = 30;
     const headH = 34;
-    const labelW = Math.min(230, Math.floor(width * 0.42));
+    const lineH = 16;
+    const rowPadY = 8;
+    const labelW = Math.min(420, Math.floor(width * 0.62));
     const valueW = (width - labelW - padX * 2) / Math.max(entries.length, 1);
-    const tableH = headH + FORCES.length * rowH + 12;
+    const labelMaxW = labelW - 4;
+
+    ctx.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    const forceLines = FORCES.map((f) => forceExportLabelLines(ctx, f, labelMaxW));
+    const rowHs = forceLines.map((lines) => Math.max(40, lines.length * lineH + rowPadY * 2));
+    const tableH = headH + rowHs.reduce((a, b) => a + b, 0) + 12;
 
     ctx.save();
     ctx.fillStyle = "#f4f8f9";
@@ -2590,7 +2851,7 @@
     ctx.font = "bold 13px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
     ctx.fillStyle = "#15555c";
     ctx.textAlign = "left";
-    ctx.fillText("5つの力の数値（％）", x + padX, y + headH / 2);
+    ctx.fillText("観点の内容と数値（％）", x + padX, y + headH / 2);
 
     ctx.font = "bold 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
     entries.forEach(({ i }, idx) => {
@@ -2600,8 +2861,10 @@
       ctx.fillText(roundLabel(i), cx, y + headH / 2);
     });
 
+    let top = y + headH;
     FORCES.forEach((f, fi) => {
-      const top = y + headH + fi * rowH;
+      const rowH = rowHs[fi];
+      const lines = forceLines[fi];
       if (fi % 2 === 0) {
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.fillRect(x + 1, top, width - 2, rowH);
@@ -2612,12 +2875,21 @@
       ctx.lineTo(x + width - padX, top);
       ctx.stroke();
 
-      ctx.fillStyle = "#1a2e35";
-      ctx.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
       ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillText(f.name, x + padX, top + rowH / 2);
+      ctx.textBaseline = "top";
+      const textTop = top + (rowH - lines.length * lineH) / 2;
+      lines.forEach((line, li) => {
+        if (li === 0) {
+          ctx.fillStyle = "#15555c";
+          ctx.font = "bold 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+        } else {
+          ctx.fillStyle = "#1a2e35";
+          ctx.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+        }
+        ctx.fillText(line, x + padX, textTop + li * lineH);
+      });
 
+      ctx.textBaseline = "middle";
       entries.forEach(({ i, r }, idx) => {
         const v = r.forcePercents[fi];
         const cx = x + padX + labelW + valueW * idx + valueW / 2;
@@ -2626,6 +2898,7 @@
         ctx.textAlign = "center";
         ctx.fillText(Number.isFinite(v) ? `${v.toFixed(1)}%` : "—", cx, top + rowH / 2);
       });
+      top += rowH;
     });
 
     ctx.restore();
@@ -2648,7 +2921,7 @@
     const entries = activeRoundEntries();
     const includeTable = boardMode === "chart" && entries.length > 0;
     const tableGap = 14;
-    const tableEstimate = includeTable ? 34 + FORCES.length * 30 + 12 : 0;
+    const tableEstimate = includeTable ? measureForcePercentTableH(w - 16, entries) : 0;
     const totalH = h + (includeTable ? tableGap + tableEstimate : 0);
 
     const out = document.createElement("canvas");
@@ -2787,14 +3060,28 @@
     return `${prefix}_${stamp.getFullYear()}${String(stamp.getMonth() + 1).padStart(2, "0")}${String(stamp.getDate()).padStart(2, "0")}_${String(stamp.getHours()).padStart(2, "0")}${String(stamp.getMinutes()).padStart(2, "0")}.png`;
   }
 
+  function itemExportLabel(item) {
+    const suffix = gradeBandId === "lower" ? "。" : "学級です。";
+    return `${item.no}${item.short}：${item.desc}${suffix}`;
+  }
+
   function drawItemValuesTable(ctx, x, y, width, force, entries) {
-    const padX = 10;
-    const rowH = 26;
+    const padX = 12;
     const headH = 30;
-    const labelW = Math.min(200, Math.floor(width * 0.48));
+    const lineH = 16;
+    const rowPadY = 8;
+    const labelW = Math.min(360, Math.floor(width * 0.62));
     const valueW = (width - labelW - padX * 2) / Math.max(entries.length, 1);
-    const rows = force.itemIds.length + 1; // items + force %
-    const tableH = headH + rows * rowH + 10;
+    const labelMaxW = labelW - 4;
+
+    ctx.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    const itemLines = force.itemIds.map((id) => {
+      const item = ITEMS[id];
+      return wrapCanvasText(ctx, itemExportLabel(item), labelMaxW);
+    });
+    const itemRowHs = itemLines.map((lines) => Math.max(36, lines.length * lineH + rowPadY * 2));
+    const forceRowH = 34;
+    const tableH = headH + itemRowHs.reduce((a, b) => a + b, 0) + forceRowH + 10;
 
     ctx.save();
     ctx.fillStyle = "#f4f8f9";
@@ -2811,7 +3098,7 @@
     ctx.font = "bold 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
     ctx.fillStyle = "#15555c";
     ctx.textAlign = "left";
-    ctx.fillText("数値（0〜4）", x + padX, y + headH / 2);
+    ctx.fillText("項目の内容と数値（0〜4）", x + padX, y + headH / 2);
 
     entries.forEach(({ i }, idx) => {
       const cx = x + padX + labelW + valueW * idx + valueW / 2;
@@ -2820,9 +3107,10 @@
       ctx.fillText(roundLabel(i), cx, y + headH / 2);
     });
 
+    let top = y + headH;
     force.itemIds.forEach((id, ri) => {
-      const item = ITEMS[id];
-      const top = y + headH + ri * rowH;
+      const rowH = itemRowHs[ri];
+      const lines = itemLines[ri];
       if (ri % 2 === 0) {
         ctx.fillStyle = "rgba(255,255,255,0.7)";
         ctx.fillRect(x + 1, top, width - 2, rowH);
@@ -2830,8 +3118,13 @@
       ctx.fillStyle = "#1a2e35";
       ctx.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(`${item.no}${item.short}`, x + padX, top + rowH / 2);
+      ctx.textBaseline = "top";
+      const textTop = top + (rowH - lines.length * lineH) / 2;
+      lines.forEach((line, li) => {
+        ctx.fillText(line, x + padX, textTop + li * lineH);
+      });
 
+      ctx.textBaseline = "middle";
       entries.forEach(({ i, r }, idx) => {
         const v = r.itemAverages[id];
         const cx = x + padX + labelW + valueW * idx + valueW / 2;
@@ -2840,23 +3133,24 @@
         ctx.textAlign = "center";
         ctx.fillText(Number.isFinite(v) ? v.toFixed(2) : "—", cx, top + rowH / 2);
       });
+      top += rowH;
     });
 
     const forceIdx = FORCES.indexOf(force);
-    const top = y + headH + force.itemIds.length * rowH;
     ctx.fillStyle = "#eef6f5";
-    ctx.fillRect(x + 1, top, width - 2, rowH);
+    ctx.fillRect(x + 1, top, width - 2, forceRowH);
     ctx.fillStyle = "#15555c";
     ctx.font = "bold 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("この力の％", x + padX, top + rowH / 2);
+    ctx.textBaseline = "middle";
+    ctx.fillText(`「${force.name}」の％`, x + padX, top + forceRowH / 2);
     entries.forEach(({ i, r }, idx) => {
       const v = r.forcePercents[forceIdx];
       const cx = x + padX + labelW + valueW * idx + valueW / 2;
       ctx.fillStyle = ROUND_COLORS[i].border;
       ctx.font = "bold 14px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(Number.isFinite(v) ? `${v.toFixed(1)}%` : "—", cx, top + rowH / 2);
+      ctx.fillText(Number.isFinite(v) ? `${v.toFixed(1)}%` : "—", cx, top + forceRowH / 2);
     });
 
     ctx.restore();
@@ -2869,14 +3163,26 @@
     const chartCanvas = document.getElementById(`chartItem${forceIndex}`);
     if (!force || !chart || !chartCanvas) return null;
 
-    const chartSize = 320;
-    const tableW = 420;
+    const useBar = preferItemBarChart(force);
+    const chartW = useBar ? 340 : 320;
+    const chartH = useBar ? 272 : 320;
+    const tableW = 520;
     const gap = 16;
     const pad = 16;
     const titleH = 36;
-    const width = pad * 2 + chartSize + gap + tableW;
-    const tableH = 30 + (force.itemIds.length + 1) * 26 + 10;
-    const contentH = Math.max(chartSize, tableH);
+    const width = pad * 2 + chartW + gap + tableW;
+
+    // 表の高さを先に測るための一時コンテキスト
+    const measure = document.createElement("canvas").getContext("2d");
+    measure.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    const labelW = Math.min(360, Math.floor(tableW * 0.62));
+    let tableH = 30 + 34 + 10;
+    force.itemIds.forEach((id) => {
+      const lines = wrapCanvasText(measure, itemExportLabel(ITEMS[id]), labelW - 4);
+      tableH += Math.max(36, lines.length * 16 + 16);
+    });
+
+    const contentH = Math.max(chartH, tableH);
     const height = pad * 2 + titleH + contentH;
 
     const out = document.createElement("canvas");
@@ -2899,7 +3205,7 @@
     ctx.fillText(force.hint + "（項目平均 0〜4）", pad + nameW + 12, pad + titleH / 2);
 
     const bodyTop = pad + titleH;
-    ctx.drawImage(chartCanvas, pad, bodyTop, chartSize, chartSize);
+    ctx.drawImage(chartCanvas, pad, bodyTop, chartW, chartH);
     const stage = document.getElementById(`itemStage${forceIndex}`);
     const layer = document.getElementById(`valueLabelLayerItem${forceIndex}`);
     if (stage && layer) {
@@ -2908,13 +3214,20 @@
         layer,
         pad,
         bodyTop,
-        chartSize,
-        chartSize,
+        chartW,
+        chartH,
         stage.clientWidth,
         stage.clientHeight
       );
     }
-    drawItemValuesTable(ctx, pad + chartSize + gap, bodyTop + Math.max(0, (chartSize - tableH) / 2), tableW, force, entries);
+    drawItemValuesTable(
+      ctx,
+      pad + chartW + gap,
+      bodyTop + Math.max(0, (chartH - tableH) / 2),
+      tableW,
+      force,
+      entries
+    );
     return out;
   }
 
@@ -2981,7 +3294,7 @@
       });
 
       await downloadCanvasPng(out, stampFileName("学級力_項目別まとめ"));
-      showMsg("項目別グラフ（5つの力＋数値）を1枚の画像で書き出しました。", "ok");
+      showMsg(`項目別グラフ（5つの${currentBand().axisWord}＋数値）を1枚の画像で書き出しました。`, "ok");
     } catch (err) {
       console.error(err);
       showMsg("書き出しに失敗しました: " + (err.message || err), "error");
@@ -3082,6 +3395,7 @@
 
     const labels = force.itemIds.map((id) => ITEMS[id].no + ITEMS[id].short);
     const multi = entries.length > 1;
+    const useBar = preferItemBarChart(force);
     const datasets = entries.map(({ i, r }, di) =>
       chartDataset(
         roundLabel(i),
@@ -3093,53 +3407,18 @@
         multi,
         di,
         entries.length,
-        "item"
+        useBar ? "item-bar" : "item"
       )
     );
     if (popupChart) popupChart.destroy();
     if (el.valueLabelLayerPopup) el.valueLabelLayerPopup.innerHTML = "";
+    if (el.forcePopupStage) {
+      el.forcePopupStage.classList.toggle("bar-chart", useBar);
+    }
     popupChart = new Chart(document.getElementById("chartForcePopup"), {
-      type: "radar",
+      type: useBar ? "bar" : "radar",
       data: { labels, datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        animation: {
-          onComplete: () => layoutPopupValueLabels(forceIndex),
-        },
-        layout: {
-          padding: multi
-            ? { top: 20, bottom: 28, left: 24, right: 24 }
-            : { top: 14, bottom: 20, left: 18, right: 18 },
-        },
-        interaction: { mode: "index", intersect: false },
-        plugins: {
-          legend: chartLegendOptions("bottom", { fontSize: 12, box: 12, padding: 10 }),
-          tooltip: {
-            enabled: false,
-            external: externalChartTooltip,
-            callbacks: {
-              title: (items) => {
-                if (!items[0]) return "";
-                const item = ITEMS[force.itemIds[items[0].dataIndex]];
-                return item ? `${item.no}${item.short}：${item.desc}` : "";
-              },
-              label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}`,
-            },
-          },
-          datalabels: { display: false },
-        },
-        scales: {
-          r: {
-            min: 0,
-            max: 4,
-            ticks: { stepSize: 1, backdropColor: "transparent" },
-            pointLabels: { font: { size: 12, weight: "600" }, padding: 12 },
-            grid: { color: "rgba(90,113,121,0.25)" },
-            angleLines: { color: "rgba(90,113,121,0.25)" },
-          },
-        },
-      },
+      options: itemChartOptions(force, multi, () => layoutPopupValueLabels(forceIndex)),
     });
     requestAnimationFrame(() => layoutPopupValueLabels(forceIndex));
   }
@@ -3229,7 +3508,7 @@
     const fontSize = opts.fontSize || 12;
     const box = opts.box || 12;
     return {
-      display: true,
+      display: opts.display !== false,
       position,
       align: "center",
       labels: {
@@ -3289,7 +3568,7 @@
 
     if (el.forceGuide) {
       el.forceGuide.innerHTML = `
-        <h3>5つの力って、どんな行動のこと？</h3>
+        <h3>${escapeHtml(currentBand().guideTitle)}</h3>
         <p class="chart-hint" style="text-align:left;margin:0 0 8px;">名前をクリック／タップすると、詳しいグラフと表が開きます。</p>
         ${FORCES.map((f, fi) => `
           <details ${fi === 0 ? "open" : ""}>
@@ -3297,7 +3576,7 @@
             <ul>
               ${f.itemIds.map((id) => {
                 const item = ITEMS[id];
-                return `<li><strong>${item.no}${item.short}</strong> … ${escapeHtml(item.desc)}学級です。</li>`;
+                return `<li><strong>${item.no}${item.short}</strong> … ${escapeHtml(item.desc)}${gradeBandId === "lower" ? "。" : "学級です。"}</li>`;
               }).join("")}
             </ul>
           </details>
@@ -3313,9 +3592,29 @@
     }
   }
 
+  function preferItemBarChart(force) {
+    return !!(force && force.itemIds && force.itemIds.length <= 2);
+  }
+
   function chartDataset(label, data, colorIdx, multi, seriesIndex = 0, seriesCount = 1, kind = "overall") {
     const c = ROUND_COLORS[colorIdx];
-    const maxVal = kind === "item" ? 4 : 100;
+    const maxVal = kind === "item" || kind === "item-bar" ? 4 : 100;
+    if (kind === "item-bar") {
+      return {
+        label,
+        data,
+        borderColor: c.border,
+        backgroundColor: c.softBg,
+        borderWidth: 2,
+        borderRadius: 4,
+        maxBarThickness: 42,
+        datalabels: {
+          color: c.ink,
+          borderColor: c.border,
+          backgroundColor: c.softBg,
+        },
+      };
+    }
     // 数値は基本「内側」（中心方向）に置き、項目名と重ならないようにする
     // 複数回は内側へ距離を変えてずらし、低い値だけ左右に少し広げる
     return {
@@ -3361,6 +3660,93 @@
     };
   }
 
+  function itemChartOptions(force, multi, onComplete) {
+    const useBar = preferItemBarChart(force);
+    const common = {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: onComplete ? { onComplete } : undefined,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        // 棒グラフは Chart.js 凡例が縦伸びしやすいので HTML 凡例を使い、ここでは非表示
+        legend: useBar
+          ? { display: false }
+          : chartLegendOptions("bottom", { fontSize: 12, box: 12, padding: 10 }),
+        tooltip: {
+          enabled: false,
+          external: externalChartTooltip,
+          callbacks: {
+            title: (items) => {
+              if (!items[0]) return "";
+              const item = ITEMS[force.itemIds[items[0].dataIndex]];
+              return item ? `${item.no}${item.short}：${item.desc}` : "";
+            },
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}`,
+          },
+        },
+        datalabels: { display: false },
+      },
+    };
+    if (useBar) {
+      return {
+        ...common,
+        layout: {
+          padding: { top: 12, bottom: 8, left: 8, right: 8 },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11, weight: "600" }, color: "#15555c" },
+          },
+          y: {
+            min: 0,
+            max: 4,
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1,
+              font: { size: 11 },
+              callback: (v) => String(v),
+            },
+            title: {
+              display: true,
+              text: "0〜4",
+              color: "#5a7179",
+              font: { size: 11 },
+            },
+            grid: {
+              color: (ctx) => (ctx.tick && ctx.tick.value === 0
+                ? "rgba(26, 46, 53, 0.55)"
+                : "rgba(90, 113, 121, 0.22)"),
+              lineWidth: (ctx) => (ctx.tick && ctx.tick.value === 0 ? 2 : 1),
+            },
+            border: {
+              display: true,
+              color: "rgba(26, 46, 53, 0.35)",
+            },
+          },
+        },
+      };
+    }
+    return {
+      ...common,
+      layout: {
+        padding: multi
+          ? { top: 18, bottom: 28, left: 20, right: 20 }
+          : { top: 12, bottom: 22, left: 14, right: 14 },
+      },
+      scales: {
+        r: {
+          min: 0,
+          max: 4,
+          ticks: { stepSize: 1, backdropColor: "transparent" },
+          pointLabels: { font: { size: 11 }, padding: 10 },
+          grid: { color: "rgba(90,113,121,0.25)" },
+          angleLines: { color: "rgba(90,113,121,0.25)" },
+        },
+      },
+    };
+  }
+
   function splitForceLabel(name) {
     const splits = {
       "目標をやりとげる力": ["目標を", "やりとげる力"],
@@ -3368,6 +3754,15 @@
       "友だちを支える力": ["友だちを", "支える力"],
       "安心を生む力": ["安心を", "生む力"],
       "きまりを守る力": ["きまりを", "守る力"],
+      "やりとげる力": ["やりとげる力"],
+      "ささえあう力": ["ささえあう力"],
+      "あんしんを生む力": ["あんしんを", "生む力"],
+      "きまりをまもる力": ["きまりを", "まもる力"],
+      "がんばりパワー": ["がんばり", "パワー"],
+      "おはなしパワー": ["おはなし", "パワー"],
+      "おたすけパワー": ["おたすけ", "パワー"],
+      "なかよしパワー": ["なかよし", "パワー"],
+      "やくそくパワー": ["やくそく", "パワー"],
     };
     return splits[name] || [name];
   }
@@ -3595,10 +3990,12 @@
 
     const stageW = stage.clientWidth;
     const stageH = stage.clientHeight;
-    const scale = chart.scales && chart.scales.r;
-    if (!scale || stageW < 8 || stageH < 8) return;
-    const cx = scale.xCenter;
-    const cy = scale.yCenter;
+    if (stageW < 8 || stageH < 8) return;
+    const radarScale = chart.scales && chart.scales.r;
+    const isBar = !radarScale && !!(chart.scales && chart.scales.y);
+    if (!radarScale && !isBar) return;
+    const cx = radarScale ? radarScale.xCenter : 0;
+    const cy = radarScale ? radarScale.yCenter : 0;
     const n = entries.length;
     const labelClass = compact ? "value-label value-label-sm" : "value-label";
 
@@ -3614,20 +4011,27 @@
         const x = props.x;
         const y = props.y;
         if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-        let ux = x - cx;
-        let uy = y - cy;
-        const len = Math.hypot(ux, uy) || 1;
-        ux /= len;
-        uy /= len;
-        const px = -uy;
-        const py = ux;
-        const t = Math.min(Math.max(v / maxVal, 0), 1);
-        const inward = (compact ? 10 : 20) + t * (compact ? 4 : 8);
-        const sideGap = compact ? (n >= 3 ? 18 : 14) : (n >= 3 ? 34 : 30);
-        const side = (di - (n - 1) / 2) * sideGap;
-        const radialBias = compact ? (di - (n - 1) / 2) * 2 : 0;
-        const baseX = x - ux * (inward + radialBias) + px * side;
-        const baseY = y - uy * (inward + radialBias) + py * side;
+        let baseX;
+        let baseY;
+        if (isBar) {
+          baseX = x;
+          baseY = y - 12;
+        } else {
+          let ux = x - cx;
+          let uy = y - cy;
+          const len = Math.hypot(ux, uy) || 1;
+          ux /= len;
+          uy /= len;
+          const px = -uy;
+          const py = ux;
+          const t = Math.min(Math.max(v / maxVal, 0), 1);
+          const inward = (compact ? 10 : 20) + t * (compact ? 4 : 8);
+          const sideGap = compact ? (n >= 3 ? 18 : 14) : (n >= 3 ? 34 : 30);
+          const side = (di - (n - 1) / 2) * sideGap;
+          const radialBias = compact ? (di - (n - 1) / 2) * 2 : 0;
+          baseX = x - ux * (inward + radialBias) + px * side;
+          baseY = y - uy * (inward + radialBias) + py * side;
+        }
         preferred.push({
           key: valueLabelKey(scope, roundIdx, pi),
           roundIdx,
@@ -3881,7 +4285,7 @@
       return `<tr>
         <td class="row-label">
           <span class="item-name">${item.no}${item.short}</span>
-          <span class="item-desc">${escapeHtml(item.desc)}学級です。</span>
+          <span class="item-desc">${escapeHtml(item.desc)}${gradeBandId === "lower" ? "。" : "学級です。"}</span>
         </td>
         ${cells}
       </tr>`;
@@ -3891,7 +4295,7 @@
       const v = r.forcePercents[forceIdx];
       return `<td class="num"><strong>${Number.isFinite(v) ? v.toFixed(1) + "%" : "—"}</strong></td>`;
     }).join("");
-    const forceRow = `<tr><td class="row-label"><strong>${escapeHtml(force.name)}</strong><span class="item-desc">上の3つの平均から出した％</span></td>${forceCells}</tr>`;
+    const forceRow = `<tr><td class="row-label"><strong>${escapeHtml(force.name)}</strong><span class="item-desc">上の${force.itemIds.length}つの平均から出した％</span></td>${forceCells}</tr>`;
     return `<table><thead><tr><th class="row-label">どんな行動？</th>${head}</tr></thead><tbody>${rows}${forceRow}</tbody></table>`;
   }
 
@@ -3903,10 +4307,12 @@
       const box = document.createElement("div");
       box.className = "item-block";
       const canvasId = `chartItem${fi}`;
+      const useBar = preferItemBarChart(force);
       box.innerHTML = `
         <div>
           <h3>${force.name}</h3>
-          <div class="chart-wrap" id="itemStage${fi}">
+          ${useBar ? `<div class="legend legend-compact">${legendHtml()}</div>` : ""}
+          <div class="chart-wrap${useBar ? " bar-chart" : ""}" id="itemStage${fi}">
             <canvas id="${canvasId}"></canvas>
             <div id="valueLabelLayerItem${fi}" class="value-label-layer" aria-label="数値ラベル（ドラッグで移動可）"></div>
           </div>
@@ -3933,53 +4339,15 @@
           multi,
           di,
           entries.length,
-          "item"
+          useBar ? "item-bar" : "item"
         )
       );
 
       if (itemCharts[fi]) itemCharts[fi].destroy();
       itemCharts[fi] = new Chart(document.getElementById(canvasId), {
-        type: "radar",
+        type: useBar ? "bar" : "radar",
         data: { labels, datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          animation: {
-            onComplete: () => layoutItemValueLabels(fi),
-          },
-          layout: {
-            padding: multi
-              ? { top: 18, bottom: 28, left: 20, right: 20 }
-              : { top: 12, bottom: 22, left: 14, right: 14 },
-          },
-          interaction: { mode: "index", intersect: false },
-          plugins: {
-            legend: chartLegendOptions("bottom", { fontSize: 12, box: 12, padding: 10 }),
-            tooltip: {
-              enabled: false,
-              external: externalChartTooltip,
-              callbacks: {
-                title: (items) => {
-                  if (!items[0]) return "";
-                  const item = ITEMS[force.itemIds[items[0].dataIndex]];
-                  return item ? `${item.no}${item.short}：${item.desc}` : "";
-                },
-                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}`,
-              },
-            },
-            datalabels: { display: false },
-          },
-          scales: {
-            r: {
-              min: 0,
-              max: 4,
-              ticks: { stepSize: 1, backdropColor: "transparent" },
-              pointLabels: { font: { size: 11 }, padding: 10 },
-              grid: { color: "rgba(90,113,121,0.25)" },
-              angleLines: { color: "rgba(90,113,121,0.25)" },
-            },
-          },
-        },
+        options: itemChartOptions(force, multi, () => layoutItemValueLabels(fi)),
       });
     });
     requestAnimationFrame(() => layoutAllItemValueLabels());
@@ -4049,7 +4417,10 @@
     renderRoundSlots();
     refreshAll();
     const mapped = map.filter((c) => c >= 0).length;
-    showMsg(`手動マッピングで再集計しました（${mapped}/15 項目）。`, mapped === 15 ? "ok" : "warn");
+    showMsg(
+      `手動マッピングで再集計しました（${mapped}/${itemCount()} 項目・${currentBand().shortLabel}）。`,
+      mapped === itemCount() ? "ok" : "warn"
+    );
   });
 
   on(el.btnAddScore, "click", () => {
@@ -4091,11 +4462,15 @@
       "完了時刻",
       ...ITEMS.map((it) => `${it.no}${it.short}：${it.keywords[0]}`),
     ];
-    const choice = ["そう思わない", "あまりそう思わない", "そう思う", "とてもそう思う"];
+    const choice =
+      gradeBandId === "lower"
+        ? ["いいえちがいます", "すこしちがいます", "すこしそうです", "はいそうです"]
+        : ["そう思わない", "あまりそう思わない", "そう思う", "とてもそう思う"];
     const rows = [];
+    const n = itemCount();
     for (let s = 0; s < 28; s++) {
       const row = [`R${s + 1}`, "", ""];
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < n; i++) {
         const base = 1.5 + seedBias + (i % 3) * 0.2 + ((s + i) % 5) * 0.15;
         const idx = Math.max(0, Math.min(3, Math.round(base)));
         row.push(choice[idx]);
@@ -4124,6 +4499,7 @@
       rawHeaders: s1.headers,
       rawRows: s1.rows,
       columnMap: map1,
+      gradeBandId,
     };
 
     const map2 = autoMapColumns(s2.headers);
@@ -4137,13 +4513,17 @@
       rawHeaders: s2.headers,
       rawRows: s2.rows,
       columnMap: map2,
+      gradeBandId,
     };
 
     buildManualMapUI(s1.headers, map1);
     if (el.btnRemap) el.btnRemap.disabled = false;
     renderRoundSlots();
     refreshAll();
-    showMsg("サンプル（第1回・第2回）を読み込みました。実際のForms Excelも同じ手順で登録できます。", "ok");
+    showMsg(
+      `サンプル（第1回・第2回／${currentBand().shortLabel}）を読み込みました。実際のForms Excelも同じ手順で登録できます。`,
+      "ok"
+    );
   });
 
   on(el.forceModalClose, "click", closeForcePopup);
@@ -4180,6 +4560,15 @@
   on(el.btnExportItems, "click", () => {
     exportItemChartsAsImage();
   });
+  on(el.gradeBand, "change", () => {
+    const prev = gradeBandId;
+    const next = el.gradeBand.value;
+    if (!applyGradeBand(next)) {
+      el.gradeBand.value = prev;
+      return;
+    }
+    showMsg(`学年段階を「${currentBand().shortLabel}」に切り替えました。`, "ok");
+  });
 
   // init — Excel枠を最優先で描画（失敗しても静的HTMLのボタンは残す）
   try {
@@ -4198,8 +4587,9 @@
     }
   }
   try {
+    updateGradeBandUi();
     renderScoreMapTable();
-    buildManualMapUI([], new Array(15).fill(-1));
+    buildManualMapUI([], emptyColumnMap());
     initAnnotateBoard();
     const initialRole = new URLSearchParams(window.location.search).get("role");
     setAppRole(initialRole || "home");
