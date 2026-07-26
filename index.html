@@ -1,0 +1,4216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>学級力アセスメント</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+  <style>
+    :root {
+      --bg: #eef4f7;
+      --bg-accent: #d9ebe8;
+      --surface: #ffffff;
+      --ink: #1a2e35;
+      --muted: #5a7179;
+      --line: #c5d5db;
+      --primary: #1f6f78;
+      --primary-dark: #15555c;
+      --accent: #c45c26;
+      --ok: #2a7a4b;
+      --danger: #b33a3a;
+      --r1: #1f6f78;
+      --r2: #c45c26;
+      --r3: #3b6ea5;
+      --r4: #7a4f9a;
+      --shadow: 0 8px 24px rgba(26, 46, 53, 0.08);
+      --radius: 12px;
+      --font: "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", "Meiryo", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 0% 0%, var(--bg-accent) 0%, transparent 50%),
+        radial-gradient(ellipse at 100% 20%, #dce8f2 0%, transparent 45%),
+        var(--bg);
+      min-height: 100vh;
+      line-height: 1.55;
+    }
+
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+
+    header.app-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    header.app-header h1 {
+      margin: 0;
+      font-size: clamp(1.4rem, 2.5vw, 1.85rem);
+      letter-spacing: 0.02em;
+      color: var(--primary-dark);
+    }
+
+    header.app-header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button, .file-btn .file-pick {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      background: var(--primary);
+      color: #fff;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button:hover, .file-btn .file-pick:hover { background: var(--primary-dark); }
+    button:active { transform: translateY(1px); }
+    button.secondary {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    button.secondary:hover { background: #f4f8fa; }
+    button.danger {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid #e5b4b4;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+    }
+    button.danger:hover { background: #fdf2f2; }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    section.panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 22px;
+      margin-bottom: 18px;
+    }
+
+    section.panel h2 {
+      margin: 0 0 14px;
+      font-size: 1.05rem;
+      color: var(--primary-dark);
+      border-left: 4px solid var(--primary);
+      padding-left: 10px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .meta-grid label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .meta-grid input, .map-select, .score-table input, select {
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+      color: var(--ink);
+    }
+
+    .rounds {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+      min-height: 0;
+    }
+
+    .round-card {
+      border: 1.5px dashed var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: linear-gradient(180deg, #f8fbfc, #fff);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .round-card.dragover {
+      border-color: var(--primary);
+      background: #eaf5f4;
+    }
+    .round-card.has-data {
+      border-style: solid;
+      border-color: transparent;
+      box-shadow: inset 0 0 0 2px var(--round-color, var(--primary));
+    }
+
+    .round-card h3 {
+      margin: 0 0 4px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--round-color);
+      flex-shrink: 0;
+    }
+    .round-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      min-height: 0;
+      line-height: 1.35;
+      margin-bottom: 6px;
+      word-break: break-all;
+    }
+    .round-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .file-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+    }
+    .file-btn input[type="file"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+      opacity: 0;
+    }
+    .file-btn .file-pick {
+      display: inline-block;
+      padding: 5px 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      line-height: 1.25;
+      box-shadow: none;
+    }
+    .round-card .round-actions button.danger {
+      padding: 4px 8px;
+      font-size: 0.78rem;
+    }
+    .file-btn .file-pick:hover {
+      background: var(--primary-dark);
+    }
+
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 900px) {
+      .charts-row { grid-template-columns: 1fr; }
+    }
+
+    .chart-box {
+      position: relative;
+      background: #fafcfd;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .chart-box h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      aspect-ratio: 1;
+    }
+    .chart-box.overall {
+      overflow: visible;
+      padding: 20px 28px 16px;
+    }
+    .overall-layout {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .overall-workbench {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+    }
+    .overall-main {
+      min-width: 0;
+    }
+    .chart-wrap-overall {
+      max-width: 820px;
+      width: 100%;
+      aspect-ratio: 1;
+      overflow: hidden;
+      margin: 0 auto;
+      position: relative;
+      touch-action: none;
+      background: #fafcfd;
+    }
+    .chart-wrap-overall #chartOverall {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    .chart-wrap-overall.photo-mode #chartOverall {
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .stage-photo {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #fff;
+      display: none;
+    }
+    .chart-wrap-overall.photo-mode .stage-photo.has-image {
+      display: block;
+    }
+    .stage-photo-empty {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      background: repeating-linear-gradient(
+        -45deg,
+        #f7fafb,
+        #f7fafb 12px,
+        #eef4f6 12px,
+        #eef4f6 24px
+      );
+    }
+    .chart-wrap-overall.photo-mode:not(.has-photo) .stage-photo-empty {
+      display: flex;
+    }
+    .board-mode-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .board-mode-bar .mode-btn {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      font-size: 0.9rem;
+    }
+    .board-mode-bar .mode-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .board-mode-bar .photo-file-btn label {
+      display: inline-block;
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .board-mode-bar .photo-file-btn label:hover {
+      background: #f4f8fa;
+    }
+    .board-mode-bar .photo-file-btn input {
+      display: none;
+    }
+    .board-mode-bar .photo-file-btn[hidden] {
+      display: none !important;
+    }
+    .board-mode-bar .photo-file-btn {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .overall-main.photo-mode .legend,
+    .overall-layout.photo-mode .value-summary,
+    .overall-layout.photo-mode .force-guide {
+      display: none;
+    }
+    .annotate-toolbar .tool-cluster.chart-only.hidden-tool {
+      display: none;
+    }
+    .value-label-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .value-label-layer[hidden] {
+      display: none !important;
+    }
+    .value-label {
+      position: absolute;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      pointer-events: auto;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      font-size: 0.9rem;
+      font-weight: 800;
+      line-height: 1.1;
+      padding: 3px 7px 3px 4px;
+      border-radius: 999px;
+      border: 1.5px solid var(--vl-border, #2a9aa6);
+      color: var(--vl-ink, #2a9aa6);
+      background: var(--vl-bg, #e8f6f7);
+      box-shadow: 0 1px 3px rgba(26, 46, 53, 0.12);
+      white-space: nowrap;
+      z-index: 1;
+    }
+    .value-label .vl-round {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.25em;
+      height: 1.25em;
+      padding: 0 3px;
+      border-radius: 999px;
+      background: var(--vl-ink, #2a9aa6);
+      color: #fff;
+      font-size: 0.72em;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .value-label .vl-num {
+      color: var(--vl-ink, #2a9aa6);
+      letter-spacing: 0.01em;
+    }
+    .value-label.value-label-sm {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0 3px 0 1px;
+      gap: 2px;
+      border-width: 1px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: none;
+    }
+    .value-label.value-label-sm .vl-round {
+      min-width: 1em;
+      height: 1em;
+      padding: 0;
+      font-size: 0.62em;
+      font-weight: 700;
+    }
+    .value-label.value-label-sm .vl-num {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+    }
+    .value-label:active {
+      cursor: grabbing;
+      z-index: 5;
+      filter: brightness(0.98);
+    }
+    .value-label-layer.locked .value-label {
+      pointer-events: none;
+      cursor: default;
+    }
+    .draw-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      cursor: crosshair;
+    }
+    .draw-layer.active {
+      pointer-events: auto;
+    }
+    .draw-layer.cursor-pen {
+      cursor: crosshair;
+    }
+    .draw-layer.cursor-sticky {
+      cursor: copy;
+    }
+    .draw-layer.cursor-eraser {
+      cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cg transform='rotate(-40 16 16)'%3E%3Crect x='11' y='4' width='10' height='14' rx='2' fill='%23f4a0b5' stroke='%23333' stroke-width='1.2'/%3E%3Crect x='11' y='16' width='10' height='9' rx='1.5' fill='%23f5f5f5' stroke='%23333' stroke-width='1.2'/%3E%3Cpath d='M11 20.5h10' stroke='%23bbb' stroke-width='1'/%3E%3C/g%3E%3C/svg%3E") 6 26, cell;
+    }
+    .draw-layer.cursor-select {
+      cursor: default;
+    }
+    .sticky-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+    }
+    .sticky-note {
+      position: absolute;
+      width: 140px;
+      min-height: 110px;
+      padding: 10px 10px 28px;
+      border-radius: 2px;
+      box-shadow: 2px 3px 8px rgba(26, 46, 53, 0.18);
+      pointer-events: auto;
+      cursor: grab;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      z-index: 4;
+    }
+    .sticky-note:active { cursor: grabbing; }
+    .sticky-note.yellow { background: #fff4a3; }
+    .sticky-note.pink { background: #ffd6e7; }
+    .sticky-note.blue { background: #d7efff; }
+    .sticky-note.green { background: #d9f5d6; }
+    .sticky-note textarea {
+      width: 100%;
+      min-height: 70px;
+      border: none;
+      background: transparent;
+      resize: none;
+      font: inherit;
+      color: var(--ink);
+      padding: 0;
+      outline: none;
+      cursor: text;
+    }
+    .sticky-note .sticky-del {
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      border: none;
+      background: rgba(255,255,255,0.7);
+      color: var(--danger);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .annotate-toolbar {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      gap: 5px;
+      align-items: stretch;
+      justify-content: flex-start;
+      margin: 0;
+      max-width: none;
+      width: 100%;
+      padding: 4px;
+      background: #f3f8f9;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      position: sticky;
+      top: 8px;
+      overflow: visible;
+    }
+    .annotate-toolbar .tool-cluster {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      gap: 4px;
+      align-items: center;
+      padding: 5px 3px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .annotate-toolbar .tool-cluster.solo {
+      padding: 3px;
+    }
+    .annotate-toolbar button.tool {
+      background: #f7fafb;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      padding: 5px 2px;
+      font-size: 0.7rem;
+      white-space: normal;
+      width: 100%;
+      line-height: 1.15;
+      min-height: 30px;
+      letter-spacing: -0.02em;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+    .annotate-toolbar button.tool .tool-ico {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+    }
+    .annotate-toolbar button.tool.active .tool-ico svg rect[fill='#f5f5f5'] {
+      fill: #fff;
+    }
+    .annotate-toolbar button.tool.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .annotate-toolbar .swatches {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: center;
+      width: 100%;
+    }
+    .annotate-toolbar .pen-swatch,
+    .annotate-toolbar .sticky-swatch {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px var(--line);
+      padding: 0;
+      cursor: pointer;
+      background: var(--swatch);
+    }
+    .annotate-toolbar .pen-swatch.active,
+    .annotate-toolbar .sticky-swatch.active {
+      box-shadow: 0 0 0 2px var(--primary);
+      transform: scale(1.08);
+    }
+    .annotate-toolbar .sticky-swatch {
+      border-radius: 4px;
+    }
+    .annotate-toolbar button.tool.mini {
+      padding: 3px 2px;
+      font-size: 0.66rem;
+      background: #fff;
+      min-height: 24px;
+    }
+    @media (max-width: 700px) {
+      .overall-workbench {
+        grid-template-columns: 1fr;
+      }
+      .annotate-toolbar {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .annotate-toolbar .tool-cluster {
+        width: auto;
+        min-width: 84px;
+      }
+    }
+    .overall-layout .value-summary {
+      margin-top: 4px;
+      max-width: 820px;
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .item-section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .item-section-head h2 {
+      margin: 0;
+      border-left: 4px solid var(--primary);
+      padding-left: 10px;
+      font-size: 1.05rem;
+      color: var(--primary-dark);
+    }
+    .item-section-head .mode-btn {
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      padding: 8px 14px;
+      font-size: 0.9rem;
+    }
+    .item-section-head .mode-btn:hover {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .item-block-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 8px;
+    }
+    .item-block-actions button {
+      font-size: 0.8rem;
+      padding: 6px 10px;
+    }
+
+    .item-charts {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .item-block {
+      display: grid;
+      grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: center;
+      background: #fafcfd;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .item-block h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      text-align: center;
+    }
+    .item-charts .chart-wrap {
+      max-width: 300px;
+      width: 100%;
+      margin: 0 auto;
+      aspect-ratio: 1;
+      position: relative;
+      overflow: visible;
+    }
+    .item-charts .chart-wrap canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      position: relative;
+      z-index: 1;
+    }
+    .chart-wrap-popup {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      overflow: visible;
+    }
+    .chart-wrap-popup canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      position: relative;
+      z-index: 1;
+    }
+    .item-side-table {
+      overflow-x: auto;
+    }
+    .item-side-table table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .item-side-table th,
+    .item-side-table td {
+      border: 1px solid var(--line);
+      padding: 7px 8px;
+      text-align: center;
+    }
+    .item-side-table th {
+      background: #e8f1f0;
+      color: var(--primary-dark);
+    }
+    .item-side-table td.row-label,
+    .item-side-table th.row-label {
+      text-align: left;
+      background: #f4f8f9;
+      white-space: nowrap;
+    }
+    .item-side-table td.num {
+      font-size: 1.02rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .item-side-table .swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: -1px;
+    }
+    .item-name {
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .item-desc {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--muted);
+      line-height: 1.45;
+      white-space: normal;
+      text-align: left;
+    }
+    .item-side-table td.row-label,
+    .value-summary td.row-label {
+      white-space: normal;
+      min-width: 180px;
+      max-width: 380px;
+    }
+    .force-guide {
+      margin-top: 14px;
+      max-width: 820px;
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+      background: #f3f8f9;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .force-guide h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+      color: var(--primary-dark);
+      text-align: left;
+    }
+    .force-guide details {
+      margin: 6px 0;
+      border-bottom: 1px dashed var(--line);
+      padding-bottom: 6px;
+    }
+    .force-guide details:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .force-guide summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--ink);
+      font-size: 0.92rem;
+    }
+    .force-guide ul {
+      margin: 6px 0 0;
+      padding-left: 1.2em;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+    .force-guide li {
+      margin: 4px 0;
+    }
+    .force-clickable {
+      cursor: pointer;
+      color: var(--primary-dark);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .force-clickable:hover {
+      color: var(--primary);
+    }
+    .chart-hint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin: 4px 0 0;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 46, 53, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 16px 48px rgba(26, 46, 53, 0.22);
+      width: min(920px, 100%);
+      max-height: min(92vh, 900px);
+      overflow: auto;
+      padding: 18px 20px 20px;
+      position: relative;
+    }
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .modal-header h3 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: var(--primary-dark);
+    }
+    .modal-header p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .modal-close {
+      background: #f0f4f5;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+    .modal-close:hover {
+      background: #e4ecee;
+    }
+    .modal-body {
+      display: grid;
+      grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: center;
+    }
+    .modal-chart-wrap .legend {
+      margin: 0 0 8px;
+    }
+    .modal-chart-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 340px;
+      margin: 0 auto;
+      overflow: visible;
+      z-index: 2;
+    }
+    .modal-body .item-side-table {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+    }
+    .chart-tooltip-popup {
+      position: fixed;
+      z-index: 2000;
+      pointer-events: none;
+      background: rgba(26, 46, 53, 0.92);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      max-width: min(320px, calc(100vw - 24px));
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      transform: translate(-50%, calc(-100% - 10px));
+      opacity: 0;
+      transition: opacity 0.08s ease;
+    }
+    .chart-tooltip-popup.show {
+      opacity: 1;
+    }
+    .chart-tooltip-popup .tt-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .chart-tooltip-popup .tt-row {
+      white-space: nowrap;
+    }
+    .chart-tooltip-popup .tt-swatch {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 6px;
+    }
+    @media (max-width: 720px) {
+      .modal-body {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 800px) {
+      .item-block {
+        grid-template-columns: 1fr;
+      }
+      .chart-wrap-overall {
+        max-width: 100%;
+      }
+    }
+
+    .empty-hint {
+      color: var(--muted);
+      text-align: center;
+      padding: 28px 12px;
+      font-size: 0.95rem;
+    }
+
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    table.data th, table.data td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: center;
+    }
+    table.data th {
+      background: #e8f1f0;
+      color: var(--primary-dark);
+      font-weight: 600;
+    }
+    table.data th.row-label, table.data td.row-label {
+      text-align: left;
+      background: #f4f8f9;
+      white-space: nowrap;
+    }
+    table.data td.num { font-variant-numeric: tabular-nums; }
+
+    .score-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .score-table th, .score-table td {
+      border: 1px solid var(--line);
+      padding: 8px;
+      text-align: left;
+    }
+    .score-table th { background: #e8f1f0; }
+    .score-table input { width: 100%; }
+
+    .map-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .map-row {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+    @media (max-width: 640px) {
+      .map-row { grid-template-columns: 1fr; }
+    }
+    .map-row span {
+      font-size: 0.88rem;
+    }
+
+    .msg {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    .msg.show { display: block; }
+    .msg.error { background: #fdf0f0; color: var(--danger); border: 1px solid #ecc4c4; }
+    .msg.ok { background: #eef8f1; color: var(--ok); border: 1px solid #b9dfc5; }
+    .msg.warn { background: #fff8eb; color: #8a5a12; border: 1px solid #f0d9a8; }
+
+    details.settings {
+      margin-top: 8px;
+    }
+    details.settings summary {
+      cursor: pointer;
+      color: var(--primary);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      justify-content: center;
+      margin-top: 12px;
+      font-size: 0.92rem;
+    }
+    .legend .leg-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px 5px 8px;
+      border-radius: 999px;
+      border: 1.5px solid #2a9aa6;
+      background: #e6f5f6;
+      font-weight: 800;
+      color: #176670;
+      box-shadow: 0 1px 3px rgba(26, 46, 53, 0.1);
+    }
+    .legend .leg-item i {
+      width: 1.15em;
+      height: 1.15em;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #176670;
+      color: #fff;
+      font-size: 0.72em;
+      font-weight: 800;
+      font-style: normal;
+    }
+    .value-summary td.num.round-c0 { color: #2a9aa6; background: rgba(42, 154, 166, 0.06); }
+    .value-summary td.num.round-c1 { color: #c45c26; background: rgba(224, 122, 58, 0.07); }
+    .value-summary td.num.round-c2 { color: #3b6ea5; background: rgba(91, 143, 212, 0.08); }
+    .value-summary td.num.round-c3 { color: #7a4f9a; background: rgba(155, 111, 192, 0.08); }
+    .value-summary {
+      margin-top: 14px;
+      overflow-x: auto;
+    }
+    .value-summary table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .value-summary th, .value-summary td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: center;
+    }
+    .value-summary td.num {
+      font-size: 1.25rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+    .value-summary th {
+      background: #e8f1f0;
+      color: var(--primary-dark);
+    }
+    .value-summary th.row-label,
+    .value-summary td.row-label {
+      text-align: left;
+      background: #f4f8f9;
+      white-space: nowrap;
+    }
+    .value-summary .swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      margin-right: 4px;
+      vertical-align: -1px;
+    }
+
+    .print-only { display: none; }
+
+    @media print {
+      body {
+        background: #fff;
+        color: #000;
+      }
+      .no-print { display: none !important; }
+      .print-only { display: block; }
+      .modal-overlay { display: none !important; }
+      .wrap { max-width: none; padding: 0; }
+      section.panel {
+        box-shadow: none;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        margin-bottom: 10px;
+        padding: 8px;
+        border: 1px solid #ccc;
+      }
+      .chart-wrap-overall { max-width: 520px; }
+      .item-block { grid-template-columns: 200px 1fr; gap: 8px; padding: 6px; break-inside: avoid; }
+      .item-charts .chart-wrap { max-width: 200px; }
+      header.app-header h1 { font-size: 16pt; }
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+    }
+
+    /* ---- ホーム / 集計・グラフ / 分析・書き込み ---- */
+    body.role-home #viewApp { display: none; }
+    body.role-data #viewHome,
+    body.role-write #viewHome { display: none; }
+    body.role-write .data-only { display: none !important; }
+    body.role-data .write-only { display: none !important; }
+
+    .home-hero {
+      text-align: center;
+      margin: 12px auto 28px;
+      max-width: 720px;
+    }
+    .home-hero .brand {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      letter-spacing: 0.04em;
+      color: var(--primary-dark);
+      font-weight: 800;
+    }
+    .home-hero .lead {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 1.02rem;
+    }
+    .flow-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 28px 0 32px;
+      padding: 0;
+      list-style: none;
+    }
+    .flow-strip li {
+      background: rgba(255,255,255,0.72);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: center;
+      font-size: 0.86rem;
+      color: var(--ink);
+      position: relative;
+    }
+    .flow-strip .n {
+      display: block;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+    @media (max-width: 720px) {
+      .flow-strip { grid-template-columns: 1fr 1fr; }
+    }
+    .role-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+    @media (max-width: 720px) {
+      .role-cards { grid-template-columns: 1fr; }
+    }
+    .role-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      padding: 22px 20px 18px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 220px;
+    }
+    .role-card.data { border-top: 5px solid var(--primary); }
+    .role-card.write { border-top: 5px solid var(--accent); }
+    .role-card h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      color: var(--ink);
+    }
+    .role-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      flex: 1;
+    }
+    .role-card .who {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--primary);
+    }
+    .role-card.write .who { color: var(--accent); }
+    .role-card button {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+    .role-card.write button { background: var(--accent); }
+    .role-card.write button:hover { background: #a34b1d; }
+    .home-note {
+      margin: 22px auto 0;
+      max-width: 720px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .role-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: -6px 0 16px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #e7f3f2, #fff8f2);
+      border: 1px solid var(--line);
+    }
+    .role-banner .steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 0.86rem;
+    }
+    .role-banner .steps li {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+    .role-banner .steps li strong { color: var(--primary); }
+    body.role-write .role-banner {
+      background: linear-gradient(90deg, #fff4ec, #eef6fb);
+    }
+    .write-start {
+      margin-bottom: 14px;
+    }
+    .write-start .big-photo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 52px;
+      padding: 12px 22px;
+      font-size: 1.1rem;
+      font-weight: 800;
+      background: var(--accent);
+    }
+    .write-start .big-photo-btn:hover { background: #a34b1d; }
+  </style>
+</head>
+<body class="role-home">
+  <div class="wrap" id="viewHome">
+    <header class="home-hero no-print">
+      <p class="brand">学級力アセスメント</p>
+      <p class="lead">Excelで集計してグラフを見る / 画像に書き込んで分析する</p>
+    </header>
+
+    <ol class="flow-strip no-print" aria-label="全体の流れ">
+      <li><span class="n">1</span>Teams等で<br>アンケート記入</li>
+      <li><span class="n">2</span>集計・グラフで<br>Excelを読み込む</li>
+      <li><span class="n">3</span>画像を書き出して<br>共有する</li>
+      <li><span class="n">4</span>分析・書き込みで<br>気づきを書く</li>
+    </ol>
+
+    <div class="role-cards no-print">
+      <article class="role-card data">
+        <div class="who">集計・グラフ</div>
+        <h2>Excelを読み込んで見る</h2>
+        <p>Forms／共同編集の Excel を読み込み、学級平均のレーダーチャートを表示します。先生も児童生徒も使えます。画像で書き出して共有できます。</p>
+        <button type="button" id="btnEnterData">集計・グラフを開く</button>
+      </article>
+      <article class="role-card write">
+        <div class="who">分析・書き込み</div>
+        <h2>画像の上に気づきを書く</h2>
+        <p>グラフ画像を入れて、手書きやふせんで分析・話し合いを進めます。書き出して見せ合えます。</p>
+        <button type="button" id="btnEnterWrite">分析・書き込みを開く</button>
+      </article>
+    </div>
+    <p class="home-note no-print">どちらのツールもこのページの中にあります。Teams では <code>集計グラフ.html</code> / <code>分析書き込み.html</code> のリンクを分けて共有できます。</p>
+  </div>
+
+  <div class="wrap" id="viewApp">
+    <header class="app-header">
+      <div>
+        <h1 id="appTitle">学級力アセスメント</h1>
+        <p id="appLead">ツールを選んでください</p>
+      </div>
+      <div class="toolbar no-print">
+        <button type="button" class="secondary" id="btnBackHome">ホームへ</button>
+        <button type="button" class="secondary data-only" id="btnSample">サンプルデータで試す</button>
+        <button type="button" class="data-only" id="btnPrint" disabled>印刷</button>
+      </div>
+    </header>
+
+    <div class="role-banner no-print" id="roleBanner">
+      <ol class="steps" id="roleSteps"></ol>
+      <span id="roleBadge" style="font-size:0.85rem;font-weight:700;color:var(--primary);"></span>
+    </div>
+
+    <section class="panel no-print write-only student-start" id="writeStartPanel">
+      <h2>分析する画像を入れる</h2>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:0.95rem;">Teams などで共有されたグラフ画像を選んでください。</p>
+      <button type="button" class="big-photo-btn" id="btnWritePickPhoto">画像を選ぶ</button>
+      <div class="msg" id="writeMsg" style="margin-top:12px;"></div>
+    </section>
+
+    <section class="panel no-print data-only" id="metaPanel">
+      <h2>学級情報</h2>
+      <div class="meta-grid">
+        <label>学年<input type="text" id="metaGrade" placeholder="例: 5年" /></label>
+        <label>組<input type="text" id="metaClass" placeholder="例: 2組" /></label>
+        <label>担任等<input type="text" id="metaTeacher" placeholder="任意" /></label>
+        <label>備考<input type="text" id="metaNote" placeholder="任意" /></label>
+      </div>
+    </section>
+
+    <section class="panel no-print data-only" id="uploadPanel">
+      <h2>回答データの登録（第1〜4回）</h2>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:0.9rem;">読み込む表は <strong>FormsのExcelと同じ形式（Sheet1）</strong> です。Forms出力でも、共同編集ブック（個人シート→Sheet1に集約）でも、そのまま登録できます。読み込み後は下のグラフを確認し、必要なら<strong>画像で書き出して</strong>共有できます。</p>
+      <div class="rounds" id="rounds">
+        <div class="round-card" data-round="0" style="--round-color:#2a9aa6">
+          <h3><i class="dot" style="background:#2a9aa6"></i>第1回</h3>
+          <div class="round-meta">Excelファイル（.xlsx / .csv）を選択またはドロップ</div>
+          <div class="round-actions">
+            <div class="file-btn">
+              <button type="button" class="file-pick" data-pick="0">Excelを読み込む</button>
+              <input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" data-round="0" tabindex="-1" />
+            </div>
+          </div>
+        </div>
+        <div class="round-card" data-round="1" style="--round-color:#e07a3a">
+          <h3><i class="dot" style="background:#e07a3a"></i>第2回</h3>
+          <div class="round-meta">Excelファイル（.xlsx / .csv）を選択またはドロップ</div>
+          <div class="round-actions">
+            <div class="file-btn">
+              <button type="button" class="file-pick" data-pick="1">Excelを読み込む</button>
+              <input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" data-round="1" tabindex="-1" />
+            </div>
+          </div>
+        </div>
+        <div class="round-card" data-round="2" style="--round-color:#5b8fd4">
+          <h3><i class="dot" style="background:#5b8fd4"></i>第3回</h3>
+          <div class="round-meta">Excelファイル（.xlsx / .csv）を選択またはドロップ</div>
+          <div class="round-actions">
+            <div class="file-btn">
+              <button type="button" class="file-pick" data-pick="2">Excelを読み込む</button>
+              <input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" data-round="2" tabindex="-1" />
+            </div>
+          </div>
+        </div>
+        <div class="round-card" data-round="3" style="--round-color:#9b6fc0">
+          <h3><i class="dot" style="background:#9b6fc0"></i>第4回</h3>
+          <div class="round-meta">Excelファイル（.xlsx / .csv）を選択またはドロップ</div>
+          <div class="round-actions">
+            <div class="file-btn">
+              <button type="button" class="file-pick" data-pick="3">Excelを読み込む</button>
+              <input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" data-round="3" tabindex="-1" />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="msg" id="uploadMsg"></div>
+
+      <details class="settings">
+        <summary>詳細設定（点数対応・列の手動マッピング）</summary>
+        <h3 style="font-size:0.95rem;margin:12px 0 8px;">選択肢テキスト → 点数</h3>
+        <p style="margin:0 0 8px;color:var(--muted);font-size:0.85rem;">数値で回答されている場合はそのまま使います。テキストの場合は下表で変換します（4件法・最大4点）。</p>
+        <table class="score-table" id="scoreMapTable">
+          <thead><tr><th>回答テキスト（部分一致可）</th><th>点数</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button type="button" class="secondary" id="btnAddScore" style="margin-top:8px;">行を追加</button>
+        <button type="button" class="secondary" id="btnResetScore" style="margin-top:8px;">初期値に戻す</button>
+
+        <h3 style="font-size:0.95rem;margin:20px 0 8px;">設問列の手動マッピング</h3>
+        <p style="margin:0 0 8px;color:var(--muted);font-size:0.85rem;">自動対応に失敗した場合、直近で読み込んだExcelの列を各項目に割り当ててください。割り当て後「再集計」を押します。</p>
+        <div class="map-grid" id="manualMap"></div>
+        <button type="button" id="btnRemap" style="margin-top:10px;" disabled>手動マッピングで再集計</button>
+      </details>
+    </section>
+
+    <div class="print-only" id="printTitle"></div>
+
+    <section class="panel" id="resultSection" hidden>
+      <h2 id="resultHeading">全体グラフ（5つの力）</h2>
+      <div class="chart-box overall">
+        <div class="overall-layout" id="overallLayout">
+          <div class="board-mode-bar no-print">
+            <button type="button" class="mode-btn active data-only" id="btnBoardChart" data-board="chart">レーダーグラフ</button>
+            <div class="photo-file-btn write-only" id="photoFileWrap" hidden>
+              <label>
+                画像を入れ替え
+                <input type="file" id="photoInput" accept="image/*" />
+              </label>
+              <button type="button" class="mode-btn" id="btnClearPhoto" hidden>画像をはずす</button>
+            </div>
+            <button type="button" class="mode-btn" id="btnExportBoard">画像で書き出す</button>
+          </div>
+          <div class="overall-workbench">
+            <aside class="annotate-toolbar no-print" id="annotateToolbar" aria-label="書き込みツール">
+              <div class="tool-cluster solo chart-only" id="selectToolCluster">
+                <button type="button" class="tool active" data-annotate="select">選択</button>
+              </div>
+              <div class="tool-cluster" data-cluster="pen">
+                <button type="button" class="tool" data-annotate="pen">手書き</button>
+                <span class="swatches" id="penSwatches">
+                  <button type="button" class="pen-swatch active" data-pen="#e5392d" style="--swatch:#e5392d" title="朱色" aria-label="朱色"></button>
+                  <button type="button" class="pen-swatch" data-pen="#2a9aa6" style="--swatch:#2a9aa6" title="あお緑" aria-label="あお緑"></button>
+                  <button type="button" class="pen-swatch" data-pen="#3b6ea5" style="--swatch:#3b6ea5" title="あお" aria-label="あお"></button>
+                  <button type="button" class="pen-swatch" data-pen="#333333" style="--swatch:#333333" title="くろ" aria-label="くろ"></button>
+                </span>
+                <button type="button" class="tool mini" id="btnClearDraw">消す</button>
+              </div>
+              <div class="tool-cluster" data-cluster="sticky">
+                <button type="button" class="tool" data-annotate="sticky">ふせん</button>
+                <span class="swatches" id="stickySwatches">
+                  <button type="button" class="sticky-swatch active" data-sticky="yellow" style="--swatch:#fff4a3" title="きいろ" aria-label="きいろ"></button>
+                  <button type="button" class="sticky-swatch" data-sticky="pink" style="--swatch:#ffd6e7" title="ピンク" aria-label="ピンク"></button>
+                  <button type="button" class="sticky-swatch" data-sticky="blue" style="--swatch:#d7efff" title="あお" aria-label="あお"></button>
+                  <button type="button" class="sticky-swatch" data-sticky="green" style="--swatch:#d9f5d6" title="みどり" aria-label="みどり"></button>
+                </span>
+                <button type="button" class="tool mini" id="btnClearStickies">消す</button>
+              </div>
+              <div class="tool-cluster solo">
+                <button type="button" class="tool" data-annotate="eraser" title="消しゴム">
+                  <span class="tool-ico" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 32 32" focusable="false">
+                      <g transform="rotate(-40 16 16)">
+                        <rect x="11" y="4" width="10" height="14" rx="2" fill="#f4a0b5" stroke="#333" stroke-width="1.2"/>
+                        <rect x="11" y="16" width="10" height="9" rx="1.5" fill="#f5f5f5" stroke="#333" stroke-width="1.2"/>
+                      </g>
+                    </svg>
+                  </span>
+                  消しゴム
+                </button>
+              </div>
+            </aside>
+            <div class="overall-main" id="overallMain">
+              <div class="chart-wrap chart-wrap-overall" id="overallStage">
+                <img id="stagePhoto" class="stage-photo" alt="分析用のグラフ画像" />
+                <div class="stage-photo-empty" id="stagePhotoEmpty">
+                  分析するグラフ画像を<br />「画像を選ぶ」から設定してください。
+                </div>
+                <canvas id="chartOverall"></canvas>
+                <div id="valueLabelLayer" class="value-label-layer" aria-label="数値ラベル（ドラッグで移動可）"></div>
+                <canvas id="drawOverall" class="draw-layer" aria-label="手書きレイヤー"></canvas>
+                <div id="stickyLayer" class="sticky-layer" aria-label="ふせんレイヤー"></div>
+              </div>
+              <p class="chart-hint no-print" id="boardHint">左のツールで書き込み。「選択」で項目名を押すと詳細が開きます。</p>
+              <div class="legend data-only" id="legendOverall"></div>
+            </div>
+          </div>
+          <div class="value-summary data-only" id="summaryOverall"></div>
+          <div class="force-guide data-only" id="forceGuide"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel data-only" id="itemSection" hidden>
+      <div class="item-section-head no-print">
+        <h2>項目別グラフと数値（0〜4）</h2>
+        <button type="button" class="mode-btn" id="btnExportItems">項目別を画像で書き出す</button>
+      </div>
+      <h2 class="print-only" style="margin:0 0 14px;">項目別グラフと数値（0〜4）</h2>
+      <div class="legend" id="legendItems"></div>
+      <div class="item-charts" id="itemCharts"></div>
+    </section>
+  </div>
+
+  <div class="modal-overlay no-print" id="forceModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="forceModalTitle">
+      <div class="modal-header">
+        <div>
+          <h3 id="forceModalTitle"></h3>
+          <p id="forceModalHint"></p>
+        </div>
+        <button type="button" class="modal-close" id="forceModalClose">閉じる</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-chart-wrap">
+          <div class="legend" id="legendForcePopup"></div>
+          <div class="chart-wrap-popup" id="forcePopupStage">
+            <canvas id="chartForcePopup"></canvas>
+            <div id="valueLabelLayerPopup" class="value-label-layer" aria-label="数値ラベル（ドラッグで移動可）"></div>
+          </div>
+        </div>
+        <div class="item-side-table" id="forceModalTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-tooltip-popup" id="chartTooltipPopup" role="tooltip"></div>
+
+  <script>
+(() => {
+  "use strict";
+
+  if (typeof Chart !== "undefined" && typeof ChartDataLabels !== "undefined") {
+    Chart.register(ChartDataLabels);
+  }
+
+  const ROUND_COLORS = [
+    { border: "#2a9aa6", fill: "rgba(42,154,166,0.08)", softBg: "#e6f5f6", ink: "#176670" },
+    { border: "#e07a3a", fill: "rgba(224,122,58,0.08)", softBg: "#fef0e6", ink: "#a84a18" },
+    { border: "#5b8fd4", fill: "rgba(91,143,212,0.08)", softBg: "#eaf1fa", ink: "#2f5d90" },
+    { border: "#9b6fc0", fill: "rgba(155,111,192,0.08)", softBg: "#f3ecf8", ink: "#684085" },
+  ];
+
+  const ITEMS = [
+    { id: 0, no: "①", short: "目標", desc: "みんなで決めた目標やめあてに力を合わせてとりくんでいる", keywords: ["目標やめあて", "目標や目あて", "力を合わせて", "めあてに力"] },
+    { id: 1, no: "②", short: "改善", desc: "自分たちの学習や生活をよくするための話し合いや活動をしている", keywords: ["よくするための話し合い", "学習や生活をよく", "改善"] },
+    { id: 2, no: "③", short: "役割", desc: "係や当番の活動に責任を持ってとりくむ", keywords: ["係や当番", "責任を持って", "役割"] },
+    { id: 3, no: "④", short: "聞く姿勢", desc: "発言している人の話を最後までしっかりと聞いている", keywords: ["最後までしっかり", "話を最後まで", "聞く姿勢", "しっかりと聞"] },
+    { id: 4, no: "⑤", short: "つながり", desc: "友だちの話に賛成・反対・つけたしと、つなげられるように発言している", keywords: ["賛成・反対", "賛成反対", "つけたし", "つなげ"] },
+    { id: 5, no: "⑥", short: "積極性", desc: "話し合いの時、考えや意見を進んで出し合う", keywords: ["進んで出し", "考えや意見を進んで", "積極"] },
+    { id: 6, no: "⑦", short: "支え合い", desc: "勉強・運動・そうじ・給食などで、教え合いや助け合いをしている", keywords: ["教え合い", "助け合い", "支え合"] },
+    { id: 7, no: "⑧", short: "仲直り", desc: "すなおに「ごめんね」と言って、仲直りができる", keywords: ["ごめんね", "仲直り"] },
+    { id: 8, no: "⑨", short: "感謝", desc: "「ありがとう」を伝え合っている", keywords: ["ありがとう", "感謝"] },
+    { id: 9, no: "⑩", short: "認め合い", desc: "友だちのよいところやがんばっているところを伝え合っている", keywords: ["よいところ", "がんばっているところ", "認め合"] },
+    { id: 10, no: "⑪", short: "尊重", desc: "友だちの心を傷つけることを言ったり、からかったりしない", keywords: ["傷つけ", "からかったり", "尊重"] },
+    { id: 11, no: "⑫", short: "仲間", desc: "だれとでも遊んだり、グループになったりすることができる", keywords: ["だれとでも", "誰とでも", "グループになったり"] },
+    { id: 12, no: "⑬", short: "学習", desc: "授業中にむだなおしゃべりをしない", keywords: ["むだなおしゃべり", "無駄なおしゃべり", "授業中に"] },
+    { id: 13, no: "⑭", short: "生活", desc: "ろうかを走らない、あいさつをするなど、学校のきまりを守っている", keywords: ["ろうかを走", "廊下を走", "あいさつ", "きまりを守"] },
+    { id: 14, no: "⑮", short: "校外", desc: "校外ではひとのめいわくにならないように考えて行動できる", keywords: ["校外", "めいわく", "迷惑"] },
+  ];
+
+  const FORCES = [
+    { name: "目標をやりとげる力", hint: "目標・改善・役割の3つ", itemIds: [0, 1, 2] },
+    { name: "話をつなげる力", hint: "聞く姿勢・つながり・積極性の3つ", itemIds: [3, 4, 5] },
+    { name: "友だちを支える力", hint: "支え合い・仲直り・感謝の3つ", itemIds: [6, 7, 8] },
+    { name: "安心を生む力", hint: "認め合い・尊重・仲間の3つ", itemIds: [9, 10, 11] },
+    { name: "きまりを守る力", hint: "学習・生活・校外の3つ", itemIds: [12, 13, 14] },
+  ];
+
+  const SKIP_HEADERS = [
+    "id", "開始時刻", "完了時刻", "メール", "名前", "氏名", "name", "email",
+    "start time", "completion time", "最終変更時刻", "respondent",
+  ];
+
+  const DEFAULT_SCORE_MAP = [
+    { text: "とてもそう思う", score: 4 },
+    { text: "そう思う", score: 3 },
+    { text: "あまりそう思わない", score: 2 },
+    { text: "そう思わない", score: 1 },
+    { text: "よくあてはまる", score: 4 },
+    { text: "ややあてはまる", score: 3 },
+    { text: "あまりあてはまらない", score: 2 },
+    { text: "あてはまらない", score: 1 },
+    { text: "4", score: 4 },
+    { text: "3", score: 3 },
+    { text: "2", score: 2 },
+    { text: "1", score: 1 },
+  ];
+
+  /** @type {Array<null|{round:number,fileName:string,responseCount:number,itemAverages:number[],forcePercents:number[],rawHeaders:string[],rawRows:any[][],columnMap:number[]}>} */
+  const rounds = [null, null, null, null];
+
+  let lastHeaders = [];
+  let lastRows = [];
+  let lastRoundIndex = -1;
+  let overallChart = null;
+  /** @type {(Chart|null)[]} */
+  const itemCharts = [null, null, null, null, null];
+  let popupChart = null;
+  let popupForceIndex = -1;
+  let scoreMap = DEFAULT_SCORE_MAP.map((x) => ({ ...x }));
+
+  const el = {
+    rounds: document.getElementById("rounds"),
+    uploadMsg: document.getElementById("uploadMsg"),
+    scoreBody: document.querySelector("#scoreMapTable tbody"),
+    manualMap: document.getElementById("manualMap"),
+    btnRemap: document.getElementById("btnRemap"),
+    btnAddScore: document.getElementById("btnAddScore"),
+    btnResetScore: document.getElementById("btnResetScore"),
+    btnPrint: document.getElementById("btnPrint"),
+    btnSample: document.getElementById("btnSample"),
+    btnEnterData: document.getElementById("btnEnterData"),
+    btnEnterWrite: document.getElementById("btnEnterWrite"),
+    btnBackHome: document.getElementById("btnBackHome"),
+    btnWritePickPhoto: document.getElementById("btnWritePickPhoto"),
+    appTitle: document.getElementById("appTitle"),
+    appLead: document.getElementById("appLead"),
+    roleSteps: document.getElementById("roleSteps"),
+    roleBadge: document.getElementById("roleBadge"),
+    resultHeading: document.getElementById("resultHeading"),
+    writeMsg: document.getElementById("writeMsg"),
+    resultSection: document.getElementById("resultSection"),
+    itemSection: document.getElementById("itemSection"),
+    itemCharts: document.getElementById("itemCharts"),
+    legendOverall: document.getElementById("legendOverall"),
+    legendItems: document.getElementById("legendItems"),
+    legendForcePopup: document.getElementById("legendForcePopup"),
+    forcePopupStage: document.getElementById("forcePopupStage"),
+    valueLabelLayerPopup: document.getElementById("valueLabelLayerPopup"),
+    summaryOverall: document.getElementById("summaryOverall"),
+    forceGuide: document.getElementById("forceGuide"),
+    printTitle: document.getElementById("printTitle"),
+    metaGrade: document.getElementById("metaGrade"),
+    metaClass: document.getElementById("metaClass"),
+    metaTeacher: document.getElementById("metaTeacher"),
+    metaNote: document.getElementById("metaNote"),
+    forceModal: document.getElementById("forceModal"),
+    forceModalTitle: document.getElementById("forceModalTitle"),
+    forceModalHint: document.getElementById("forceModalHint"),
+    forceModalTable: document.getElementById("forceModalTable"),
+    forceModalClose: document.getElementById("forceModalClose"),
+    chartTooltipPopup: document.getElementById("chartTooltipPopup"),
+    overallStage: document.getElementById("overallStage"),
+    overallLayout: document.getElementById("overallLayout"),
+    overallMain: document.getElementById("overallMain"),
+    stagePhoto: document.getElementById("stagePhoto"),
+    valueLabelLayer: document.getElementById("valueLabelLayer"),
+    btnBoardChart: document.getElementById("btnBoardChart"),
+    photoFileWrap: document.getElementById("photoFileWrap"),
+    photoInput: document.getElementById("photoInput"),
+    btnClearPhoto: document.getElementById("btnClearPhoto"),
+    btnExportBoard: document.getElementById("btnExportBoard"),
+    btnExportItems: document.getElementById("btnExportItems"),
+    boardHint: document.getElementById("boardHint"),
+    selectToolCluster: document.getElementById("selectToolCluster"),
+    drawOverall: document.getElementById("drawOverall"),
+    stickyLayer: document.getElementById("stickyLayer"),
+    annotateToolbar: document.getElementById("annotateToolbar"),
+    penSwatches: document.getElementById("penSwatches"),
+    stickySwatches: document.getElementById("stickySwatches"),
+    btnClearDraw: document.getElementById("btnClearDraw"),
+    btnClearStickies: document.getElementById("btnClearStickies"),
+  };
+
+  /** @type {Map<string, {dx:number, dy:number}>} */
+  const valueLabelOffsets = new Map();
+  /** @type {Map<string, string>} */
+  const valueLabelDataSigByScope = new Map();
+  let valueLabelDrag = null;
+
+  /** @type {"home"|"data"|"write"} */
+  let appRole = "home";
+
+  let annotateMode = "select";
+  let drawing = false;
+  let drawCtx = null;
+  let lastDrawPoint = null;
+  let stickySeq = 0;
+  let penColorValue = "#e5392d";
+  let stickyColorValue = "yellow";
+  let boardMode = "chart"; // chart | photo
+  let hasBoardPhoto = false;
+
+  const ROLE_COPY = {
+    data: {
+      title: "集計・グラフ",
+      lead: "Excelを読み込み → グラフ確認 → 必要なら画像で書き出して共有",
+      badge: "集計・グラフ",
+      heading: "全体グラフ（5つの力）",
+      steps: [
+        "<strong>1</strong> Excelを読み込む",
+        "<strong>2</strong> グラフを確認",
+        "<strong>3</strong> 画像で書き出す",
+        "<strong>4</strong> 共有・話し合い",
+      ],
+    },
+    write: {
+      title: "分析・書き込み",
+      lead: "グラフ画像を入れる → 手書き・ふせん → 画像で書き出して見せ合う",
+      badge: "分析・書き込み",
+      heading: "書き込みボード",
+      steps: [
+        "<strong>1</strong> 画像を選ぶ",
+        "<strong>2</strong> 気づきを書く",
+        "<strong>3</strong> 画像で書き出す",
+        "<strong>4</strong> 見せ合う",
+      ],
+    },
+  };
+
+  function normalizeRole(role) {
+    if (role === "data" || role === "chart" || role === "teacher") return "data";
+    if (role === "write" || role === "board" || role === "student") return "write";
+    return "home";
+  }
+
+  function setAppRole(role) {
+    appRole = normalizeRole(role);
+    document.body.classList.remove("role-home", "role-data", "role-write", "role-teacher", "role-student");
+    document.body.classList.add("role-" + appRole);
+
+    const url = new URL(window.location.href);
+    if (appRole === "home") url.searchParams.delete("role");
+    else url.searchParams.set("role", appRole);
+    history.replaceState(null, "", url.pathname + url.search + url.hash);
+
+    if (appRole === "home") {
+      document.title = "学級力アセスメント";
+      return;
+    }
+
+    const copy = ROLE_COPY[appRole];
+    document.title = copy.title + "｜学級力アセスメント";
+    if (el.appTitle) el.appTitle.textContent = copy.title;
+    if (el.appLead) el.appLead.textContent = copy.lead;
+    if (el.roleBadge) {
+      el.roleBadge.textContent = copy.badge;
+      el.roleBadge.style.color = appRole === "write" ? "var(--accent)" : "var(--primary)";
+    }
+    if (el.roleSteps) {
+      el.roleSteps.innerHTML = copy.steps.map((s) => `<li>${s}</li>`).join("");
+    }
+    if (el.resultHeading) el.resultHeading.textContent = copy.heading;
+
+    if (appRole === "write") {
+      setBoardMode("photo");
+      if (el.resultSection) el.resultSection.hidden = false;
+      if (el.itemSection) el.itemSection.hidden = true;
+      requestAnimationFrame(() => syncDrawCanvasSize());
+    } else {
+      setBoardMode("chart");
+      updateSectionVisibility();
+      if (rounds.some(Boolean)) refreshAll();
+    }
+  }
+
+  function getDrawContext() {
+    if (!el.drawOverall) return null;
+    if (!drawCtx) drawCtx = el.drawOverall.getContext("2d");
+    return drawCtx;
+  }
+
+  function syncDrawCanvasSize() {
+    const stage = el.overallStage;
+    const canvas = el.drawOverall;
+    if (!stage || !canvas) return;
+    const w = stage.clientWidth;
+    const h = stage.clientHeight;
+    if (w < 10 || h < 10) return;
+
+    const prev = canvas.width > 0 && canvas.height > 0 ? canvas.toDataURL() : null;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    drawCtx = canvas.getContext("2d");
+    drawCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawCtx.lineCap = "round";
+    drawCtx.lineJoin = "round";
+
+    if (prev) {
+      const img = new Image();
+      img.onload = () => {
+        drawCtx.setTransform(1, 0, 0, 1, 0, 0);
+        drawCtx.clearRect(0, 0, canvas.width, canvas.height);
+        drawCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        drawCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      };
+      img.src = prev;
+    }
+    layoutOverallValueLabels();
+  }
+
+  function setAnnotateMode(mode) {
+    annotateMode = mode;
+    if (!el.annotateToolbar) return;
+    el.annotateToolbar.querySelectorAll("button.tool[data-annotate]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.annotate === mode);
+    });
+    if (el.drawOverall) {
+      el.drawOverall.classList.toggle("active", mode === "pen" || mode === "eraser" || mode === "sticky");
+      el.drawOverall.classList.remove("cursor-pen", "cursor-sticky", "cursor-eraser", "cursor-select");
+      if (mode === "pen") el.drawOverall.classList.add("cursor-pen");
+      else if (mode === "sticky") el.drawOverall.classList.add("cursor-sticky");
+      else if (mode === "eraser") el.drawOverall.classList.add("cursor-eraser");
+      else el.drawOverall.classList.add("cursor-select");
+    }
+    if (el.valueLabelLayer) {
+      el.valueLabelLayer.classList.toggle("locked", mode !== "select");
+    }
+  }
+
+  function stagePoint(e) {
+    const rect = el.overallStage.getBoundingClientRect();
+    const src = e.touches && e.touches[0] ? e.touches[0] : e;
+    return {
+      x: src.clientX - rect.left,
+      y: src.clientY - rect.top,
+    };
+  }
+
+  function startDraw(e) {
+    if (annotateMode !== "pen" && annotateMode !== "eraser") return;
+    e.preventDefault();
+    drawing = true;
+    lastDrawPoint = stagePoint(e);
+    const ctx = getDrawContext();
+    if (!ctx) return;
+    ctx.beginPath();
+    ctx.moveTo(lastDrawPoint.x, lastDrawPoint.y);
+  }
+
+  function moveDraw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const ctx = getDrawContext();
+    if (!ctx || !lastDrawPoint) return;
+    const p = stagePoint(e);
+    ctx.globalCompositeOperation = annotateMode === "eraser" ? "destination-out" : "source-over";
+    ctx.strokeStyle = penColorValue;
+    ctx.lineWidth = annotateMode === "eraser" ? 18 : 3.5;
+    ctx.beginPath();
+    ctx.moveTo(lastDrawPoint.x, lastDrawPoint.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    lastDrawPoint = p;
+  }
+
+  function endDraw() {
+    drawing = false;
+    lastDrawPoint = null;
+    const ctx = getDrawContext();
+    if (ctx) ctx.globalCompositeOperation = "source-over";
+  }
+
+  function addStickyNote(x, y, color, text) {
+    if (!el.stickyLayer) return;
+    stickySeq += 1;
+    const note = document.createElement("div");
+    note.className = "sticky-note " + (color || "yellow");
+    note.dataset.stickyId = String(stickySeq);
+    const left = Math.max(8, Math.min(x - 50, el.overallStage.clientWidth - 150));
+    const top = Math.max(8, Math.min(y - 20, el.overallStage.clientHeight - 120));
+    note.style.left = left + "px";
+    note.style.top = top + "px";
+    note.innerHTML = `
+      <textarea placeholder="気づきを書こう">${text ? escapeHtml(text) : ""}</textarea>
+      <button type="button" class="sticky-del">けす</button>
+    `;
+    el.stickyLayer.appendChild(note);
+
+    const ta = note.querySelector("textarea");
+    note.querySelector(".sticky-del").addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      note.remove();
+    });
+
+    let drag = null;
+    note.addEventListener("pointerdown", (ev) => {
+      if (ev.target === ta || ev.target.classList.contains("sticky-del")) return;
+      note.setPointerCapture(ev.pointerId);
+      drag = {
+        ox: ev.clientX - note.offsetLeft,
+        oy: ev.clientY - note.offsetTop,
+      };
+    });
+    note.addEventListener("pointermove", (ev) => {
+      if (!drag) return;
+      const nx = ev.clientX - drag.ox;
+      const ny = ev.clientY - drag.oy;
+      const maxX = el.overallStage.clientWidth - note.offsetWidth - 4;
+      const maxY = el.overallStage.clientHeight - note.offsetHeight - 4;
+      note.style.left = Math.max(0, Math.min(nx, maxX)) + "px";
+      note.style.top = Math.max(0, Math.min(ny, maxY)) + "px";
+    });
+    note.addEventListener("pointerup", () => { drag = null; });
+    note.addEventListener("pointercancel", () => { drag = null; });
+
+    ta.focus();
+  }
+
+  function onDrawLayerPointerDown(e) {
+    if (annotateMode === "sticky") {
+      e.preventDefault();
+      const p = stagePoint(e);
+      const color = stickyColorValue;
+      addStickyNote(p.x, p.y, color, "");
+      return;
+    }
+    startDraw(e);
+  }
+
+  function initAnnotateBoard() {
+    if (!el.overallStage || !el.drawOverall || !el.annotateToolbar) return;
+
+    el.annotateToolbar.querySelectorAll("button.tool[data-annotate]").forEach((btn) => {
+      btn.addEventListener("click", () => setAnnotateMode(btn.dataset.annotate));
+    });
+    if (el.penSwatches) {
+      el.penSwatches.querySelectorAll(".pen-swatch").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          penColorValue = btn.dataset.pen;
+          el.penSwatches.querySelectorAll(".pen-swatch").forEach((b) => b.classList.toggle("active", b === btn));
+          setAnnotateMode("pen");
+        });
+      });
+    }
+    if (el.stickySwatches) {
+      el.stickySwatches.querySelectorAll(".sticky-swatch").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          stickyColorValue = btn.dataset.sticky;
+          el.stickySwatches.querySelectorAll(".sticky-swatch").forEach((b) => b.classList.toggle("active", b === btn));
+          setAnnotateMode("sticky");
+        });
+      });
+    }
+    el.btnClearDraw.addEventListener("click", () => {
+      const ctx = getDrawContext();
+      if (!ctx || !el.drawOverall) return;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, el.drawOverall.width, el.drawOverall.height);
+      ctx.restore();
+    });
+    el.btnClearStickies.addEventListener("click", () => {
+      if (el.stickyLayer) el.stickyLayer.innerHTML = "";
+    });
+
+    el.drawOverall.addEventListener("pointerdown", onDrawLayerPointerDown);
+    el.drawOverall.addEventListener("pointermove", moveDraw);
+    el.drawOverall.addEventListener("pointerup", endDraw);
+    el.drawOverall.addEventListener("pointerleave", endDraw);
+    el.drawOverall.addEventListener("pointercancel", endDraw);
+
+    const ro = new ResizeObserver(() => {
+      syncDrawCanvasSize();
+      if (overallChart) overallChart.resize();
+    });
+    ro.observe(el.overallStage);
+    setAnnotateMode("select");
+    syncDrawCanvasSize();
+  }
+
+  function externalChartTooltip(context) {
+    const tip = el.chartTooltipPopup;
+    if (!tip) return;
+    const { chart, tooltip } = context;
+
+    if (!tooltip || tooltip.opacity === 0) {
+      tip.classList.remove("show");
+      return;
+    }
+
+    const title = (tooltip.title || []).join(" ");
+    const lines = (tooltip.body || []).map((b, i) => {
+      const text = (b.lines || []).join(" ");
+      const color = tooltip.labelColors && tooltip.labelColors[i]
+        ? tooltip.labelColors[i].borderColor || tooltip.labelColors[i].backgroundColor
+        : "#fff";
+      return `<div class="tt-row"><span class="tt-swatch" style="background:${color}"></span>${escapeHtml(text)}</div>`;
+    }).join("");
+
+    tip.innerHTML = `${title ? `<div class="tt-title">${escapeHtml(title)}</div>` : ""}${lines}`;
+
+    const canvasRect = chart.canvas.getBoundingClientRect();
+    const caretX = canvasRect.left + tooltip.caretX;
+    const caretY = canvasRect.top + tooltip.caretY;
+
+    tip.classList.add("show");
+
+    const margin = 8;
+    let left = caretX;
+    let top = caretY;
+    let transform = "translate(-50%, calc(-100% - 10px))";
+
+    // near right edge / table: show tip to the left of the point
+    if (caretX > canvasRect.left + canvasRect.width * 0.62) {
+      left = caretX - 12;
+      transform = "translate(calc(-100% - 4px), -50%)";
+      top = caretY;
+    } else if (caretX < canvasRect.left + canvasRect.width * 0.38) {
+      left = caretX + 12;
+      transform = "translate(4px, -50%)";
+      top = caretY;
+    }
+
+    // keep inside viewport
+    tip.style.transform = transform;
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+
+    const shown = tip.getBoundingClientRect();
+    let adjLeft = left;
+    let adjTop = top;
+    if (shown.right > window.innerWidth - margin) {
+      adjLeft -= shown.right - (window.innerWidth - margin);
+    }
+    if (shown.left < margin) {
+      adjLeft += margin - shown.left;
+    }
+    if (shown.top < margin) {
+      // flip below
+      if (transform.includes("-100%")) {
+        transform = "translate(-50%, 12px)";
+        tip.style.transform = transform;
+      } else {
+        adjTop += margin - shown.top;
+      }
+    }
+    if (shown.bottom > window.innerHeight - margin) {
+      adjTop -= shown.bottom - (window.innerHeight - margin);
+    }
+    tip.style.left = `${adjLeft}px`;
+    tip.style.top = `${adjTop}px`;
+    tip.style.transform = transform;
+  }
+
+  function hideChartTooltip() {
+    if (el.chartTooltipPopup) el.chartTooltipPopup.classList.remove("show");
+  }
+
+  function showMsg(text, type) {
+    if (appRole === "write") {
+      showWriteMsg(text, type);
+      return;
+    }
+    if (!el.uploadMsg) return;
+    el.uploadMsg.textContent = text;
+    el.uploadMsg.className = "msg show " + (type || "ok");
+  }
+
+  function clearMsg() {
+    if (el.uploadMsg) {
+      el.uploadMsg.className = "msg";
+      el.uploadMsg.textContent = "";
+    }
+    if (el.writeMsg) {
+      el.writeMsg.className = "msg";
+      el.writeMsg.textContent = "";
+    }
+  }
+
+  function roundLabel(i) {
+    return `第${i + 1}回`;
+  }
+
+  function bindRoundCardEvents(card) {
+    const i = Number(card.dataset.round);
+    card.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      card.classList.add("dragover");
+    });
+    card.addEventListener("dragleave", () => card.classList.remove("dragover"));
+    card.addEventListener("drop", (e) => {
+      e.preventDefault();
+      card.classList.remove("dragover");
+      const file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) handleFile(i, file);
+    });
+    const fileInput = card.querySelector('input[type="file"]');
+    card.querySelectorAll("[data-pick]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (fileInput) fileInput.click();
+      });
+    });
+    if (fileInput) {
+      fileInput.addEventListener("change", () => {
+        const idx = Number(fileInput.dataset.round);
+        const file = fileInput.files && fileInput.files[0];
+        if (file) handleFile(idx, file);
+        fileInput.value = "";
+      });
+    }
+    card.querySelectorAll("[data-clear]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.getAttribute("data-clear"));
+        rounds[idx] = null;
+        renderRoundSlots();
+        refreshAll();
+        showMsg(`第${idx + 1}回のデータを削除しました。`, "ok");
+      });
+    });
+  }
+
+  function renderRoundSlots() {
+    if (!el.rounds) return;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < 4; i++) {
+      const data = rounds[i];
+      const color = ROUND_COLORS[i].border;
+      const card = document.createElement("div");
+      card.className = "round-card" + (data ? " has-data" : "");
+      card.style.setProperty("--round-color", color);
+      card.dataset.round = String(i);
+
+      const meta = data
+        ? `${escapeHtml(data.fileName)}<br>回答数: ${data.responseCount}件`
+        : "Excelファイル（.xlsx / .csv）を選択またはドロップ";
+
+      card.innerHTML = `
+        <h3><i class="dot" style="background:${color}"></i>第${i + 1}回</h3>
+        <div class="round-meta">${meta}</div>
+        <div class="round-actions">
+          <div class="file-btn">
+            <button type="button" class="file-pick" data-pick="${i}">${data ? "差し替え" : "Excelを読み込む"}</button>
+            <input type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" data-round="${i}" tabindex="-1" />
+          </div>
+          ${data ? `<button type="button" class="danger" data-clear="${i}">削除</button>` : ""}
+        </div>
+      `;
+      bindRoundCardEvents(card);
+      frag.appendChild(card);
+    }
+    el.rounds.innerHTML = "";
+    el.rounds.appendChild(frag);
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function normalizeHeader(h) {
+    return String(h || "")
+      .replace(/\s+/g, "")
+      .replace(/[　]/g, "")
+      .toLowerCase();
+  }
+
+  function isSkipHeader(h) {
+    const n = normalizeHeader(h);
+    return SKIP_HEADERS.some((s) => n.includes(normalizeHeader(s)));
+  }
+
+  function autoMapColumns(headers) {
+    const used = new Set();
+    const map = new Array(15).fill(-1);
+
+    for (const item of ITEMS) {
+      let best = -1;
+      let bestScore = 0;
+      headers.forEach((h, col) => {
+        if (used.has(col) || isSkipHeader(h)) return;
+        const nh = String(h || "");
+        let score = 0;
+        for (const kw of item.keywords) {
+          if (nh.includes(kw)) score = Math.max(score, 10 + kw.length);
+        }
+        if (nh.includes(item.no)) score = Math.max(score, 20);
+        if (nh.includes(item.no + item.short)) score = Math.max(score, 30);
+        if (score > bestScore) {
+          bestScore = score;
+          best = col;
+        }
+      });
+      if (best >= 0 && bestScore > 0) {
+        map[item.id] = best;
+        used.add(best);
+      }
+    }
+    return map;
+  }
+
+  function parseScore(value) {
+    if (value == null || value === "") return null;
+    if (typeof value === "string" && value.trim().startsWith("=")) return null;
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return clampScore(value);
+    }
+    const raw = String(value).trim();
+    if (!raw) return null;
+    const asNum = Number(raw.replace(/[点点]/g, ""));
+    if (Number.isFinite(asNum) && raw.match(/^[\d.]+$/)) {
+      return clampScore(asNum);
+    }
+
+    // longer phrases first
+    const sorted = [...scoreMap].sort((a, b) => b.text.length - a.text.length);
+    for (const row of sorted) {
+      if (!row.text) continue;
+      if (raw.includes(row.text) || raw === row.text) {
+        return clampScore(row.score);
+      }
+    }
+    return null;
+  }
+
+  function clampScore(n) {
+    if (!Number.isFinite(n)) return null;
+    return Math.min(4, Math.max(0, n));
+  }
+
+  function aggregate(rows, columnMap) {
+    const sums = new Array(15).fill(0);
+    const counts = new Array(15).fill(0);
+
+    for (const row of rows) {
+      for (let i = 0; i < 15; i++) {
+        const col = columnMap[i];
+        if (col < 0) continue;
+        const score = parseScore(row[col]);
+        if (score == null) continue;
+        sums[i] += score;
+        counts[i] += 1;
+      }
+    }
+
+    const itemAverages = sums.map((s, i) => (counts[i] ? s / counts[i] : NaN));
+    const forcePercents = FORCES.map((f) => {
+      const vals = f.itemIds.map((id) => itemAverages[id]);
+      if (vals.some((v) => !Number.isFinite(v))) return NaN;
+      const sum = vals.reduce((a, b) => a + b, 0);
+      return (sum / 12) * 100;
+    });
+
+    const responseCount = rows.length;
+    const mappedCount = columnMap.filter((c) => c >= 0).length;
+    return { itemAverages, forcePercents, responseCount, mappedCount };
+  }
+
+  function pickTargetSheetName(wb) {
+    const names = wb.SheetNames || [];
+    const normalized = names.map((n) => ({ raw: n, key: String(n).replace(/\s+/g, "").toLowerCase() }));
+    const preferred = normalized.find((n) => n.key === "sheet1" || n.key === "シート1");
+    if (preferred) return preferred.raw;
+    return names[0] || null;
+  }
+
+  function readWorkbook(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          // cellStyles not needed; formula cells use cached calculated values when saved by Excel
+          const wb = XLSX.read(data, { type: "array", cellFormula: true, cellNF: false });
+          const sheetName = pickTargetSheetName(wb);
+          if (!sheetName) throw new Error("シートが見つかりません。");
+          const sheet = wb.Sheets[sheetName];
+          const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", raw: false });
+          if (!aoa.length) throw new Error(`「${sheetName}」が空です。`);
+          const headers = (aoa[0] || []).map((h) => String(h ?? ""));
+          const rows = aoa
+            .slice(1)
+            .filter((r) => r.some((c) => String(c ?? "").trim() !== ""))
+            // skip instruction / blank id rows sometimes placed under Sheet1
+            .filter((r) => {
+              const first = String(r[0] ?? "").trim();
+              if (!first) {
+                // keep rows that still have answers in question columns
+                return r.slice(1).some((c) => String(c ?? "").trim() !== "");
+              }
+              return !/^使い方|^注意|^※/.test(first);
+            });
+          resolve({ headers, rows, sheetName });
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error("ファイルの読み込みに失敗しました。"));
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  async function handleFile(roundIndex, file) {
+    clearMsg();
+    try {
+      const { headers, rows, sheetName } = await readWorkbook(file);
+      if (!rows.length) {
+        showMsg(
+          `「${sheetName}」に回答行が見つかりませんでした。共同編集ブックなら、Excelで開いてSheet1を保存し直してから再度読み込んでください（数式の結果がファイルに残ります）。`,
+          "error"
+        );
+        return;
+      }
+
+      lastHeaders = headers;
+      lastRows = rows;
+      lastRoundIndex = roundIndex;
+
+      let columnMap = autoMapColumns(headers);
+      let result = aggregate(rows, columnMap);
+
+      if (result.mappedCount < 15) {
+        buildManualMapUI(headers, columnMap);
+        showMsg(
+          `第${roundIndex + 1}回: 「${sheetName}」を読み込みました。自動対応できた項目は ${result.mappedCount}/15 です。下の「詳細設定」で列を割り当て、「再集計」を押してください。`,
+          "warn"
+        );
+      } else {
+        buildManualMapUI(headers, columnMap);
+        showMsg(
+          `第${roundIndex + 1}回: ${file.name} の「${sheetName}」を登録しました（回答 ${result.responseCount} 件・15項目対応）。`,
+          "ok"
+        );
+      }
+
+      rounds[roundIndex] = {
+        round: roundIndex + 1,
+        fileName: file.name,
+        responseCount: result.responseCount,
+        itemAverages: result.itemAverages,
+        forcePercents: result.forcePercents,
+        rawHeaders: headers,
+        rawRows: rows,
+        columnMap,
+      };
+
+      renderRoundSlots();
+      refreshAll();
+      el.btnRemap.disabled = false;
+    } catch (err) {
+      console.error(err);
+      showMsg("読み込みエラー: " + (err.message || err), "error");
+    }
+  }
+
+  function buildManualMapUI(headers, columnMap) {
+    el.manualMap.innerHTML = "";
+    const options = headers
+      .map((h, i) => ({ i, h }))
+      .filter(({ h, i }) => !isSkipHeader(h) || (columnMap && columnMap.includes(i)));
+
+    ITEMS.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "map-row";
+      const selected = columnMap[item.id];
+      const opts = [`<option value="-1">（未選択）</option>`]
+        .concat(
+          headers.map((h, i) => {
+            const label = h ? `${i + 1}: ${escapeHtml(h)}` : `${i + 1}: （空の見出し）`;
+            return `<option value="${i}" ${i === selected ? "selected" : ""}>${label}</option>`;
+          })
+        )
+        .join("");
+      row.innerHTML = `<span title="${escapeHtml(item.desc)}">${item.no}${item.short}</span><select class="map-select" data-item="${item.id}">${opts}</select>`;
+      el.manualMap.appendChild(row);
+    });
+  }
+
+  function getManualColumnMap() {
+    const map = new Array(15).fill(-1);
+    el.manualMap.querySelectorAll("select[data-item]").forEach((sel) => {
+      const id = Number(sel.dataset.item);
+      map[id] = Number(sel.value);
+    });
+    return map;
+  }
+
+  function rematerializeRound(roundIndex, columnMap) {
+    const r = rounds[roundIndex];
+    if (!r || !r.rawRows) return;
+    const result = aggregate(r.rawRows, columnMap);
+    r.columnMap = columnMap;
+    r.itemAverages = result.itemAverages;
+    r.forcePercents = result.forcePercents;
+    r.responseCount = result.responseCount;
+  }
+
+  function applyBoardMode() {
+    const isPhoto = boardMode === "photo" || appRole === "write";
+    if (appRole === "write") boardMode = "photo";
+    if (el.overallStage) {
+      el.overallStage.classList.toggle("photo-mode", isPhoto);
+      el.overallStage.classList.toggle("has-photo", isPhoto && hasBoardPhoto);
+    }
+    if (el.overallMain) el.overallMain.classList.toggle("photo-mode", isPhoto);
+    if (el.overallLayout) el.overallLayout.classList.toggle("photo-mode", isPhoto);
+    if (el.btnBoardChart) el.btnBoardChart.classList.toggle("active", !isPhoto);
+    if (el.photoFileWrap) el.photoFileWrap.hidden = !(isPhoto && appRole === "write");
+    if (el.btnClearPhoto) el.btnClearPhoto.hidden = !(isPhoto && hasBoardPhoto && appRole === "write");
+    if (el.selectToolCluster) {
+      el.selectToolCluster.classList.toggle("hidden-tool", isPhoto || appRole === "write");
+    }
+    if (el.boardHint) {
+      el.boardHint.textContent = isPhoto
+        ? "左のツールで手書きやふせんができます。終わったら「画像で書き出す」を押します。"
+        : "数値はドラッグで動かせます。「選択」で項目名を押すと詳細が開きます。書き込みや画像書き出しもできます。";
+    }
+    if (el.valueLabelLayer) {
+      el.valueLabelLayer.hidden = !!isPhoto;
+    }
+    if (isPhoto && annotateMode === "select") {
+      setAnnotateMode("pen");
+    }
+    requestAnimationFrame(() => {
+      syncDrawCanvasSize();
+      layoutOverallValueLabels();
+    });
+  }
+
+  function setBoardMode(mode) {
+    boardMode = mode === "photo" ? "photo" : "chart";
+    applyBoardMode();
+    updateSectionVisibility();
+    if (boardMode === "chart" && rounds.some(Boolean) && !overallChart) {
+      renderOverallChart();
+      renderLegend();
+    } else if (boardMode === "chart" && overallChart) {
+      overallChart.resize();
+      requestAnimationFrame(() => layoutOverallValueLabels());
+    }
+  }
+
+  function showWriteMsg(text, type) {
+    if (!el.writeMsg) return;
+    el.writeMsg.className = "msg show " + (type || "ok");
+    el.writeMsg.textContent = text;
+  }
+
+  function loadBoardPhoto(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      if (appRole === "write") showWriteMsg("画像ファイルを選んでください。", "error");
+      else showMsg("画像ファイルを選んでください。", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      el.stagePhoto.onload = () => {
+        hasBoardPhoto = true;
+        el.stagePhoto.classList.add("has-image");
+        applyBoardMode();
+        updateSectionVisibility();
+        const ok = "画像を設定しました。手書きやふせんで書き込めます。";
+        if (appRole === "write") {
+          showWriteMsg(ok, "ok");
+          if (el.resultSection) el.resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          showMsg(ok, "ok");
+        }
+      };
+      el.stagePhoto.src = String(reader.result);
+    };
+    reader.onerror = () => {
+      if (appRole === "write") showWriteMsg("画像の読み込みに失敗しました。", "error");
+      else showMsg("画像の読み込みに失敗しました。", "error");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearBoardPhoto() {
+    hasBoardPhoto = false;
+    el.stagePhoto.removeAttribute("src");
+    el.stagePhoto.classList.remove("has-image");
+    if (el.photoInput) el.photoInput.value = "";
+    applyBoardMode();
+    updateSectionVisibility();
+    if (appRole === "write") showWriteMsg("画像をはずしました。", "ok");
+    else showMsg("画像をはずしました。", "ok");
+  }
+
+  function stickyBgColor(note) {
+    if (note.classList.contains("pink")) return "#ffd6e7";
+    if (note.classList.contains("blue")) return "#d7efff";
+    if (note.classList.contains("green")) return "#d9f5d6";
+    return "#fff4a3";
+  }
+
+  function wrapCanvasText(ctx, text, maxWidth) {
+    const lines = [];
+    const paragraphs = String(text || "").split(/\n/);
+    paragraphs.forEach((para, pi) => {
+      if (pi > 0) lines.push("");
+      if (!para) {
+        if (!lines.length) lines.push("");
+        return;
+      }
+      let line = "";
+      for (const ch of para) {
+        const test = line + ch;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          lines.push(line);
+          line = ch;
+        } else {
+          line = test;
+        }
+      }
+      lines.push(line);
+    });
+    return lines.length ? lines : [""];
+  }
+
+  function drawImageCoverContain(ctx, img, boxW, boxH, mode) {
+    const iw = img.naturalWidth || img.width;
+    const ih = img.naturalHeight || img.height;
+    if (!iw || !ih) return;
+    const scale = mode === "cover"
+      ? Math.max(boxW / iw, boxH / ih)
+      : Math.min(boxW / iw, boxH / ih);
+    const dw = iw * scale;
+    const dh = ih * scale;
+    const dx = (boxW - dw) / 2;
+    const dy = (boxH - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+  }
+
+  function roundRectPath(ctx, x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
+  }
+
+  function drawForcePercentTable(ctx, x, y, width, entries) {
+    const padX = 12;
+    const rowH = 30;
+    const headH = 34;
+    const labelW = Math.min(230, Math.floor(width * 0.42));
+    const valueW = (width - labelW - padX * 2) / Math.max(entries.length, 1);
+    const tableH = headH + FORCES.length * rowH + 12;
+
+    ctx.save();
+    ctx.fillStyle = "#f4f8f9";
+    ctx.strokeStyle = "#c5d5db";
+    ctx.lineWidth = 1;
+    roundRectPath(ctx, x, y, width, tableH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#e8f1f0";
+    ctx.fillRect(x + 1, y + 1, width - 2, headH);
+
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 13px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    ctx.fillStyle = "#15555c";
+    ctx.textAlign = "left";
+    ctx.fillText("5つの力の数値（％）", x + padX, y + headH / 2);
+
+    ctx.font = "bold 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    entries.forEach(({ i }, idx) => {
+      const cx = x + padX + labelW + valueW * idx + valueW / 2;
+      ctx.fillStyle = ROUND_COLORS[i].border;
+      ctx.textAlign = "center";
+      ctx.fillText(roundLabel(i), cx, y + headH / 2);
+    });
+
+    FORCES.forEach((f, fi) => {
+      const top = y + headH + fi * rowH;
+      if (fi % 2 === 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillRect(x + 1, top, width - 2, rowH);
+      }
+      ctx.strokeStyle = "rgba(197,213,219,0.75)";
+      ctx.beginPath();
+      ctx.moveTo(x + padX, top);
+      ctx.lineTo(x + width - padX, top);
+      ctx.stroke();
+
+      ctx.fillStyle = "#1a2e35";
+      ctx.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(f.name, x + padX, top + rowH / 2);
+
+      entries.forEach(({ i, r }, idx) => {
+        const v = r.forcePercents[fi];
+        const cx = x + padX + labelW + valueW * idx + valueW / 2;
+        ctx.fillStyle = ROUND_COLORS[i].border;
+        ctx.font = "bold 18px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(Number.isFinite(v) ? `${v.toFixed(1)}%` : "—", cx, top + rowH / 2);
+      });
+    });
+
+    ctx.restore();
+    return tableH;
+  }
+
+  async function exportBoardAsImage() {
+    const stage = el.overallStage;
+    if (!stage || stage.clientWidth < 10) {
+      showMsg("書き出す画面がありません。", "error");
+      return;
+    }
+    if (boardMode === "photo" && !hasBoardPhoto) {
+      showMsg("先に画像を入れてから書き出してください。", "warn");
+      return;
+    }
+
+    const w = stage.clientWidth;
+    const h = stage.clientHeight;
+    const entries = activeRoundEntries();
+    const includeTable = boardMode === "chart" && entries.length > 0;
+    const tableGap = 14;
+    const tableEstimate = includeTable ? 34 + FORCES.length * 30 + 12 : 0;
+    const totalH = h + (includeTable ? tableGap + tableEstimate : 0);
+
+    const out = document.createElement("canvas");
+    const scale = Math.min(window.devicePixelRatio || 1, 2);
+    out.width = Math.round(w * scale);
+    out.height = Math.round(totalH * scale);
+    const ctx = out.getContext("2d");
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, totalH);
+
+    try {
+      if (boardMode === "photo" && el.stagePhoto && el.stagePhoto.classList.contains("has-image")) {
+        drawImageCoverContain(ctx, el.stagePhoto, w, h, "contain");
+      } else {
+        const chartCanvas = document.getElementById("chartOverall");
+        if (chartCanvas) {
+          ctx.drawImage(chartCanvas, 0, 0, w, h);
+        }
+      }
+
+      if (boardMode === "chart" && el.valueLabelLayer && el.overallStage) {
+        drawValueLabelLayer(
+          ctx,
+          el.valueLabelLayer,
+          0,
+          0,
+          w,
+          h,
+          el.overallStage.clientWidth,
+          el.overallStage.clientHeight
+        );
+      }
+
+      if (el.drawOverall && el.drawOverall.width > 0) {
+        ctx.drawImage(el.drawOverall, 0, 0, w, h);
+      }
+
+      const notes = el.stickyLayer ? Array.from(el.stickyLayer.querySelectorAll(".sticky-note")) : [];
+      notes.forEach((note) => {
+        const left = note.offsetLeft;
+        const top = note.offsetTop;
+        const nw = note.offsetWidth;
+        const nh = note.offsetHeight;
+        ctx.save();
+        ctx.fillStyle = stickyBgColor(note);
+        ctx.strokeStyle = "rgba(26,46,53,0.15)";
+        ctx.lineWidth = 1;
+        ctx.shadowColor = "rgba(26,46,53,0.18)";
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 3;
+        const r = 2;
+        ctx.beginPath();
+        ctx.moveTo(left + r, top);
+        ctx.arcTo(left + nw, top, left + nw, top + nh, r);
+        ctx.arcTo(left + nw, top + nh, left, top + nh, r);
+        ctx.arcTo(left, top + nh, left, top, r);
+        ctx.arcTo(left, top, left + nw, top, r);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowColor = "transparent";
+        ctx.stroke();
+
+        const ta = note.querySelector("textarea");
+        const text = ta ? ta.value : "";
+        ctx.fillStyle = "#1a2e35";
+        ctx.font = "14px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+        ctx.textBaseline = "top";
+        const pad = 10;
+        const lines = wrapCanvasText(ctx, text, nw - pad * 2);
+        const lineH = 20;
+        lines.forEach((line, i) => {
+          if ((i + 1) * lineH > nh - 24) return;
+          ctx.fillText(line, left + pad, top + pad + i * lineH);
+        });
+        ctx.restore();
+      });
+
+      if (includeTable) {
+        drawForcePercentTable(ctx, 8, h + tableGap, w - 16, entries);
+      }
+
+      const stamp = new Date();
+      const fname = `学級力ボード_${stamp.getFullYear()}${String(stamp.getMonth() + 1).padStart(2, "0")}${String(stamp.getDate()).padStart(2, "0")}_${String(stamp.getHours()).padStart(2, "0")}${String(stamp.getMinutes()).padStart(2, "0")}.png`;
+
+      await new Promise((resolve, reject) => {
+        out.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("画像の作成に失敗しました"));
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = fname;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          resolve();
+        }, "image/png");
+      });
+      showMsg(
+        includeTable ? "画像を書き出しました（グラフ＋数値表）。" : "画像を書き出しました。",
+        "ok"
+      );
+    } catch (err) {
+      console.error(err);
+      showMsg("書き出しに失敗しました: " + (err.message || err), "error");
+    }
+  }
+
+  function downloadCanvasPng(canvas, fname) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error("画像の作成に失敗しました"));
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fname;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        resolve();
+      }, "image/png");
+    });
+  }
+
+  function stampFileName(prefix) {
+    const stamp = new Date();
+    return `${prefix}_${stamp.getFullYear()}${String(stamp.getMonth() + 1).padStart(2, "0")}${String(stamp.getDate()).padStart(2, "0")}_${String(stamp.getHours()).padStart(2, "0")}${String(stamp.getMinutes()).padStart(2, "0")}.png`;
+  }
+
+  function drawItemValuesTable(ctx, x, y, width, force, entries) {
+    const padX = 10;
+    const rowH = 26;
+    const headH = 30;
+    const labelW = Math.min(200, Math.floor(width * 0.48));
+    const valueW = (width - labelW - padX * 2) / Math.max(entries.length, 1);
+    const rows = force.itemIds.length + 1; // items + force %
+    const tableH = headH + rows * rowH + 10;
+
+    ctx.save();
+    ctx.fillStyle = "#f4f8f9";
+    ctx.strokeStyle = "#c5d5db";
+    ctx.lineWidth = 1;
+    roundRectPath(ctx, x, y, width, tableH, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#e8f1f0";
+    ctx.fillRect(x + 1, y + 1, width - 2, headH);
+
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    ctx.fillStyle = "#15555c";
+    ctx.textAlign = "left";
+    ctx.fillText("数値（0〜4）", x + padX, y + headH / 2);
+
+    entries.forEach(({ i }, idx) => {
+      const cx = x + padX + labelW + valueW * idx + valueW / 2;
+      ctx.fillStyle = ROUND_COLORS[i].border;
+      ctx.textAlign = "center";
+      ctx.fillText(roundLabel(i), cx, y + headH / 2);
+    });
+
+    force.itemIds.forEach((id, ri) => {
+      const item = ITEMS[id];
+      const top = y + headH + ri * rowH;
+      if (ri % 2 === 0) {
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        ctx.fillRect(x + 1, top, width - 2, rowH);
+      }
+      ctx.fillStyle = "#1a2e35";
+      ctx.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(`${item.no}${item.short}`, x + padX, top + rowH / 2);
+
+      entries.forEach(({ i, r }, idx) => {
+        const v = r.itemAverages[id];
+        const cx = x + padX + labelW + valueW * idx + valueW / 2;
+        ctx.fillStyle = ROUND_COLORS[i].border;
+        ctx.font = "bold 14px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(Number.isFinite(v) ? v.toFixed(2) : "—", cx, top + rowH / 2);
+      });
+    });
+
+    const forceIdx = FORCES.indexOf(force);
+    const top = y + headH + force.itemIds.length * rowH;
+    ctx.fillStyle = "#eef6f5";
+    ctx.fillRect(x + 1, top, width - 2, rowH);
+    ctx.fillStyle = "#15555c";
+    ctx.font = "bold 12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText("この力の％", x + padX, top + rowH / 2);
+    entries.forEach(({ i, r }, idx) => {
+      const v = r.forcePercents[forceIdx];
+      const cx = x + padX + labelW + valueW * idx + valueW / 2;
+      ctx.fillStyle = ROUND_COLORS[i].border;
+      ctx.font = "bold 14px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(Number.isFinite(v) ? `${v.toFixed(1)}%` : "—", cx, top + rowH / 2);
+    });
+
+    ctx.restore();
+    return tableH;
+  }
+
+  function composeItemForceExport(forceIndex, entries) {
+    const force = FORCES[forceIndex];
+    const chart = itemCharts[forceIndex];
+    const chartCanvas = document.getElementById(`chartItem${forceIndex}`);
+    if (!force || !chart || !chartCanvas) return null;
+
+    const chartSize = 320;
+    const tableW = 420;
+    const gap = 16;
+    const pad = 16;
+    const titleH = 36;
+    const width = pad * 2 + chartSize + gap + tableW;
+    const tableH = 30 + (force.itemIds.length + 1) * 26 + 10;
+    const contentH = Math.max(chartSize, tableH);
+    const height = pad * 2 + titleH + contentH;
+
+    const out = document.createElement("canvas");
+    const scale = Math.min(window.devicePixelRatio || 1, 2);
+    out.width = Math.round(width * scale);
+    out.height = Math.round(height * scale);
+    const ctx = out.getContext("2d");
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = "#1f6f78";
+    ctx.font = "bold 18px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(force.name, pad, pad + titleH / 2);
+    const nameW = ctx.measureText(force.name).width;
+    ctx.font = "12px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+    ctx.fillStyle = "#5a7179";
+    ctx.fillText(force.hint + "（項目平均 0〜4）", pad + nameW + 12, pad + titleH / 2);
+
+    const bodyTop = pad + titleH;
+    ctx.drawImage(chartCanvas, pad, bodyTop, chartSize, chartSize);
+    const stage = document.getElementById(`itemStage${forceIndex}`);
+    const layer = document.getElementById(`valueLabelLayerItem${forceIndex}`);
+    if (stage && layer) {
+      drawValueLabelLayer(
+        ctx,
+        layer,
+        pad,
+        bodyTop,
+        chartSize,
+        chartSize,
+        stage.clientWidth,
+        stage.clientHeight
+      );
+    }
+    drawItemValuesTable(ctx, pad + chartSize + gap, bodyTop + Math.max(0, (chartSize - tableH) / 2), tableW, force, entries);
+    return out;
+  }
+
+  async function exportItemChartsAsImage(forceIndex) {
+    const entries = activeRoundEntries();
+    if (!entries.length) {
+      showMsg("先にExcelを読み込んでください。", "warn");
+      return;
+    }
+    if (!itemCharts.some(Boolean)) {
+      showMsg("項目別グラフがまだありません。", "warn");
+      return;
+    }
+
+    try {
+      layoutAllItemValueLabels();
+      if (typeof forceIndex === "number") {
+        const one = composeItemForceExport(forceIndex, entries);
+        if (!one) {
+          showMsg("この力のグラフを書き出せませんでした。", "error");
+          return;
+        }
+        await downloadCanvasPng(one, stampFileName(`学級力_項目別_${FORCES[forceIndex].name}`));
+        showMsg(`「${FORCES[forceIndex].name}」を画像で書き出しました。`, "ok");
+        return;
+      }
+
+      const parts = [];
+      for (let fi = 0; fi < FORCES.length; fi++) {
+        const part = composeItemForceExport(fi, entries);
+        if (part) parts.push(part);
+      }
+      if (!parts.length) {
+        showMsg("項目別グラフを書き出せませんでした。", "error");
+        return;
+      }
+
+      const gap = 12;
+      const scale = Math.min(window.devicePixelRatio || 1, 2);
+      const partHeights = parts.map((p) => p.height / scale);
+      const partWidths = parts.map((p) => p.width / scale);
+      const totalW = Math.max(...partWidths);
+      const totalH = partHeights.reduce((s, h) => s + h, 0) + gap * (parts.length - 1) + 24;
+      const titleBand = 28;
+
+      const out = document.createElement("canvas");
+      out.width = Math.round(totalW * scale);
+      out.height = Math.round((totalH + titleBand) * scale);
+      const ctx = out.getContext("2d");
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, totalW, totalH + titleBand);
+      ctx.fillStyle = "#15555c";
+      ctx.font = "bold 16px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.fillText("項目別グラフと数値（0〜4）", 12, titleBand / 2);
+
+      let y = titleBand;
+      parts.forEach((p, i) => {
+        const pw = partWidths[i];
+        const ph = partHeights[i];
+        ctx.drawImage(p, 0, y, pw, ph);
+        y += ph + gap;
+      });
+
+      await downloadCanvasPng(out, stampFileName("学級力_項目別まとめ"));
+      showMsg("項目別グラフ（5つの力＋数値）を1枚の画像で書き出しました。", "ok");
+    } catch (err) {
+      console.error(err);
+      showMsg("書き出しに失敗しました: " + (err.message || err), "error");
+    }
+  }
+
+  function updateSectionVisibility() {
+    if (appRole === "home") return;
+    const hasData = rounds.some(Boolean);
+    if (appRole === "write") {
+      el.resultSection.hidden = false;
+      el.itemSection.hidden = true;
+      if (el.btnPrint) el.btnPrint.disabled = true;
+      return;
+    }
+    const showBoard = hasData || boardMode === "photo" || hasBoardPhoto;
+    el.resultSection.hidden = !showBoard;
+    el.itemSection.hidden = !hasData;
+    if (el.btnPrint) el.btnPrint.disabled = !showBoard;
+  }
+
+  function refreshAll() {
+    const hasData = rounds.some(Boolean);
+    updateSectionVisibility();
+    updatePrintTitle();
+
+    if (!hasData) {
+      destroyCharts();
+      if (boardMode === "photo" || hasBoardPhoto) {
+        applyBoardMode();
+      }
+      return;
+    }
+    if (boardMode === "chart") {
+      renderOverallChart();
+    } else {
+      requestAnimationFrame(() => syncDrawCanvasSize());
+    }
+    renderItemCharts();
+    renderLegend();
+    applyBoardMode();
+  }
+
+  function updatePrintTitle() {
+    const g = el.metaGrade.value.trim();
+    const c = el.metaClass.value.trim();
+    const t = el.metaTeacher.value.trim();
+    const n = el.metaNote.value.trim();
+    const parts = ["学級力アンケート結果"];
+    if (g || c) parts.push([g, c].filter(Boolean).join(" "));
+    if (t) parts.push(t);
+    if (n) parts.push(n);
+    el.printTitle.innerHTML = `<h1 style="margin:0 0 8px;font-size:16pt;">${escapeHtml(parts.join(" ／ "))}</h1>`;
+  }
+
+  function destroyCharts() {
+    if (overallChart) {
+      overallChart.destroy();
+      overallChart = null;
+    }
+    itemCharts.forEach((ch, i) => {
+      if (ch) {
+        ch.destroy();
+        itemCharts[i] = null;
+      }
+    });
+    clearOverallValueLabels();
+    clearItemValueLabels();
+    closeForcePopup();
+  }
+
+  function closeForcePopup() {
+    if (!el.forceModal) return;
+    el.forceModal.classList.remove("open");
+    el.forceModal.setAttribute("aria-hidden", "true");
+    hideChartTooltip();
+    if (el.valueLabelLayerPopup) el.valueLabelLayerPopup.innerHTML = "";
+    if (popupChart) {
+      popupChart.destroy();
+      popupChart = null;
+    }
+    popupForceIndex = -1;
+  }
+
+  function openForcePopup(forceIndex) {
+    const force = FORCES[forceIndex];
+    if (!force || !el.forceModal) return;
+    const entries = activeRoundEntries();
+    if (!entries.length) return;
+
+    popupForceIndex = forceIndex;
+    el.forceModalTitle.textContent = force.name;
+    el.forceModalHint.textContent = "この力は、次の行動ができているかを表しています。数値はドラッグで動かせます。";
+    el.forceModalTable.innerHTML = forceItemsTableHtml(force, entries);
+    if (el.legendForcePopup) el.legendForcePopup.innerHTML = legendHtml();
+    el.forceModal.classList.add("open");
+    el.forceModal.setAttribute("aria-hidden", "false");
+
+    const labels = force.itemIds.map((id) => ITEMS[id].no + ITEMS[id].short);
+    const multi = entries.length > 1;
+    const datasets = entries.map(({ i, r }, di) =>
+      chartDataset(
+        roundLabel(i),
+        force.itemIds.map((id) => {
+          const v = r.itemAverages[id];
+          return Number.isFinite(v) ? Math.round(v * 100) / 100 : 0;
+        }),
+        i,
+        multi,
+        di,
+        entries.length,
+        "item"
+      )
+    );
+    if (popupChart) popupChart.destroy();
+    if (el.valueLabelLayerPopup) el.valueLabelLayerPopup.innerHTML = "";
+    popupChart = new Chart(document.getElementById("chartForcePopup"), {
+      type: "radar",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: {
+          onComplete: () => layoutPopupValueLabels(forceIndex),
+        },
+        layout: {
+          padding: multi
+            ? { top: 20, bottom: 28, left: 24, right: 24 }
+            : { top: 14, bottom: 20, left: 18, right: 18 },
+        },
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: chartLegendOptions("bottom", { fontSize: 12, box: 12, padding: 10 }),
+          tooltip: {
+            enabled: false,
+            external: externalChartTooltip,
+            callbacks: {
+              title: (items) => {
+                if (!items[0]) return "";
+                const item = ITEMS[force.itemIds[items[0].dataIndex]];
+                return item ? `${item.no}${item.short}：${item.desc}` : "";
+              },
+              label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}`,
+            },
+          },
+          datalabels: { display: false },
+        },
+        scales: {
+          r: {
+            min: 0,
+            max: 4,
+            ticks: { stepSize: 1, backdropColor: "transparent" },
+            pointLabels: { font: { size: 12, weight: "600" }, padding: 12 },
+            grid: { color: "rgba(90,113,121,0.25)" },
+            angleLines: { color: "rgba(90,113,121,0.25)" },
+          },
+        },
+      },
+    });
+    requestAnimationFrame(() => layoutPopupValueLabels(forceIndex));
+  }
+
+  function hitTestForceLabel(chart, event) {
+    const scale = chart.scales.r;
+    if (!scale) return -1;
+    const canvasPos = Chart.helpers.getRelativePosition(event, chart);
+    const items = scale._pointLabelItems || [];
+
+    // Prefer bounding box if available
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (
+        item.left != null &&
+        canvasPos.x >= item.left - 8 &&
+        canvasPos.x <= item.right + 8 &&
+        canvasPos.y >= item.top - 8 &&
+        canvasPos.y <= item.bottom + 8
+      ) {
+        return i;
+      }
+    }
+
+    // Fallback: distance to label anchor
+    let best = -1;
+    let bestDist = 48;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const dx = canvasPos.x - item.x;
+      const dy = canvasPos.y - item.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    }
+    return best;
+  }
+
+  function onOverallChartClick(event, elements, chart) {
+    if (elements && elements.length) {
+      openForcePopup(elements[0].index);
+      return;
+    }
+    const idx = hitTestForceLabel(chart, event);
+    if (idx >= 0) openForcePopup(idx);
+  }
+
+  function onOverallChartHover(event, elements, chart) {
+    const canvas = chart.canvas;
+    if (elements && elements.length) {
+      canvas.style.cursor = "pointer";
+      return;
+    }
+    const idx = hitTestForceLabel(chart, event);
+    canvas.style.cursor = idx >= 0 ? "pointer" : "default";
+  }
+
+  function activeRoundEntries() {
+    return rounds
+      .map((r, i) => (r ? { i, r } : null))
+      .filter(Boolean);
+  }
+
+  function legendHtml() {
+    return activeRoundEntries()
+      .map(({ i }) => {
+        const c = ROUND_COLORS[i];
+        return (
+          `<span class="leg-item" style="background:${c.softBg};border-color:${c.border};color:${c.ink};">` +
+          `<i style="background:${c.ink};">${i + 1}</i>${roundLabel(i)}</span>`
+        );
+      })
+      .join("");
+  }
+
+  function renderLegend() {
+    const html = legendHtml();
+    el.legendOverall.innerHTML = html;
+    if (el.legendItems) el.legendItems.innerHTML = html;
+    if (el.legendForcePopup) el.legendForcePopup.innerHTML = html;
+    renderOverallSummary();
+  }
+
+  function chartLegendOptions(position = "bottom", opts = {}) {
+    const fontSize = opts.fontSize || 12;
+    const box = opts.box || 12;
+    return {
+      display: true,
+      position,
+      align: "center",
+      labels: {
+        usePointStyle: true,
+        pointStyle: "circle",
+        boxWidth: box,
+        boxHeight: box,
+        padding: opts.padding || 12,
+        font: { size: fontSize, weight: "700" },
+        generateLabels(chart) {
+          return chart.data.datasets.map((ds, di) => {
+            const border = ds.borderColor || "#2a9aa6";
+            const c =
+              ROUND_COLORS.find((rc) => rc.border === border) ||
+              ROUND_COLORS[di % ROUND_COLORS.length];
+            const hidden = chart.getDatasetMeta(di).hidden === true;
+            return {
+              text: ds.label || "",
+              fillStyle: c.softBg,
+              strokeStyle: c.border,
+              fontColor: hidden ? "#9aa6aa" : c.ink,
+              lineWidth: 2,
+              hidden,
+              datasetIndex: di,
+              pointStyle: "circle",
+            };
+          });
+        },
+      },
+    };
+  }
+
+  function renderOverallSummary() {
+    if (!el.summaryOverall) return;
+    const entries = activeRoundEntries();
+    if (!entries.length) {
+      el.summaryOverall.innerHTML = "";
+      if (el.forceGuide) el.forceGuide.innerHTML = "";
+      return;
+    }
+    const headRow = `<tr><th class="row-label">観点</th>${entries.map(({ i }) =>
+      `<th><span class="swatch" style="background:${ROUND_COLORS[i].softBg};outline:1.5px solid ${ROUND_COLORS[i].border};outline-offset:-1px;"></span>${roundLabel(i)}</th>`
+    ).join("")}</tr>`;
+    const rows = FORCES.map((f, fi) => {
+      const cells = entries
+        .map(({ i, r }) => {
+          const v = r.forcePercents[fi];
+          return `<td class="num round-c${i}">${Number.isFinite(v) ? v.toFixed(1) + "%" : "—"}</td>`;
+        })
+        .join("");
+      return `<tr data-force-index="${fi}"><td class="row-label"><button type="button" class="force-clickable" data-open-force="${fi}" style="background:none;border:none;padding:0;text-align:left;font:inherit;">${escapeHtml(f.name)}</button><span class="item-desc">${escapeHtml(f.hint)}（クリックで詳細）</span></td>${cells}</tr>`;
+    }).join("");
+    el.summaryOverall.innerHTML = `<table><thead>${headRow}</thead><tbody>${rows}</tbody></table>`;
+    el.summaryOverall.querySelectorAll("[data-open-force]").forEach((btn) => {
+      btn.addEventListener("click", () => openForcePopup(Number(btn.dataset.openForce)));
+    });
+
+    if (el.forceGuide) {
+      el.forceGuide.innerHTML = `
+        <h3>5つの力って、どんな行動のこと？</h3>
+        <p class="chart-hint" style="text-align:left;margin:0 0 8px;">名前をクリック／タップすると、詳しいグラフと表が開きます。</p>
+        ${FORCES.map((f, fi) => `
+          <details ${fi === 0 ? "open" : ""}>
+            <summary><button type="button" class="force-clickable" data-open-force="${fi}" style="background:none;border:none;padding:0;font:inherit;">${escapeHtml(f.name)}</button></summary>
+            <ul>
+              ${f.itemIds.map((id) => {
+                const item = ITEMS[id];
+                return `<li><strong>${item.no}${item.short}</strong> … ${escapeHtml(item.desc)}学級です。</li>`;
+              }).join("")}
+            </ul>
+          </details>
+        `).join("")}
+      `;
+      el.forceGuide.querySelectorAll("[data-open-force]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openForcePopup(Number(btn.dataset.openForce));
+        });
+      });
+    }
+  }
+
+  function chartDataset(label, data, colorIdx, multi, seriesIndex = 0, seriesCount = 1, kind = "overall") {
+    const c = ROUND_COLORS[colorIdx];
+    const maxVal = kind === "item" ? 4 : 100;
+    // 数値は基本「内側」（中心方向）に置き、項目名と重ならないようにする
+    // 複数回は内側へ距離を変えてずらし、低い値だけ左右に少し広げる
+    return {
+      label,
+      data,
+      borderColor: c.border,
+      backgroundColor: c.fill,
+      borderWidth: 2.5,
+      pointBackgroundColor: "#fff",
+      pointBorderColor: c.border,
+      pointBorderWidth: 2,
+      pointRadius: kind === "item" ? 3.5 : 5,
+      pointHoverRadius: kind === "item" ? 5 : 6,
+      fill: true,
+      datalabels: {
+        color: c.ink,
+        borderColor: c.border,
+        backgroundColor: c.softBg,
+        anchor: "end",
+        align: (ctx) => {
+          const v = Number(ctx.dataset.data[ctx.dataIndex]);
+          const low = Number.isFinite(v) && v <= maxVal * 0.38;
+          if (low && multi && seriesCount > 1) {
+            const spread = kind === "item" ? 36 : 56;
+            return -spread / 2 + (spread * seriesIndex) / (seriesCount - 1);
+          }
+          if (low) return "end";
+          return "start";
+        },
+        offset: (ctx) => {
+          const v = Number(ctx.dataset.data[ctx.dataIndex]);
+          const low = Number.isFinite(v) && v <= maxVal * 0.38;
+          const high = Number.isFinite(v) && v >= maxVal * 0.78;
+          let o = kind === "item" ? 8 : 14;
+          if (multi && seriesCount > 1) {
+            o += seriesIndex * (kind === "item" ? 9 : 14);
+          }
+          if (high) o += kind === "item" ? 6 : 10;
+          if (low) o = kind === "item" ? 5 + seriesIndex * 3 : 8 + seriesIndex * 4;
+          return o;
+        },
+      },
+    };
+  }
+
+  function splitForceLabel(name) {
+    const splits = {
+      "目標をやりとげる力": ["目標を", "やりとげる力"],
+      "話をつなげる力": ["話を", "つなげる力"],
+      "友だちを支える力": ["友だちを", "支える力"],
+      "安心を生む力": ["安心を", "生む力"],
+      "きまりを守る力": ["きまりを", "守る力"],
+    };
+    return splits[name] || [name];
+  }
+
+  function valueLabelKey(scope, roundIdx, pointIdx) {
+    return `${scope}:${roundIdx}-${pointIdx}`;
+  }
+
+  function clearScopeValueLabelOffsets(scope) {
+    const prefix = scope + ":";
+    Array.from(valueLabelOffsets.keys()).forEach((k) => {
+      if (k.startsWith(prefix)) valueLabelOffsets.delete(k);
+    });
+  }
+
+  function clearOverallValueLabels() {
+    if (el.valueLabelLayer) el.valueLabelLayer.innerHTML = "";
+  }
+
+  function clearItemValueLabels() {
+    FORCES.forEach((_, fi) => {
+      const layer = document.getElementById(`valueLabelLayerItem${fi}`);
+      if (layer) layer.innerHTML = "";
+    });
+    if (el.valueLabelLayerPopup) el.valueLabelLayerPopup.innerHTML = "";
+  }
+
+  function boxesOverlap(a, b, pad) {
+    return !(
+      a.x + a.w + pad <= b.x ||
+      b.x + b.w + pad <= a.x ||
+      a.y + a.h + pad <= b.y ||
+      b.y + b.h + pad <= a.y
+    );
+  }
+
+  function resolveLabelCollisions(items, stageW, stageH) {
+    const pad = 4;
+    for (let iter = 0; iter < 60; iter++) {
+      let moved = false;
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const a = items[i];
+          const b = items[j];
+          if (!boxesOverlap(a, b, pad)) continue;
+          const acx = a.x + a.w / 2;
+          const acy = a.y + a.h / 2;
+          const bcx = b.x + b.w / 2;
+          const bcy = b.y + b.h / 2;
+          let vx = bcx - acx;
+          let vy = bcy - acy;
+          let dist = Math.hypot(vx, vy);
+          if (dist < 0.01) {
+            vx = (j - i) || 1;
+            vy = (i - j) || 1;
+            dist = Math.hypot(vx, vy);
+          }
+          vx /= dist;
+          vy /= dist;
+          const push = 3.5;
+          if (!a.pinned) {
+            a.x -= vx * push;
+            a.y -= vy * push;
+            moved = true;
+          }
+          if (!b.pinned) {
+            b.x += vx * push;
+            b.y += vy * push;
+            moved = true;
+          }
+        }
+      }
+      items.forEach((it) => {
+        it.x = Math.max(2, Math.min(it.x, stageW - it.w - 2));
+        it.y = Math.max(2, Math.min(it.y, stageH - it.h - 2));
+      });
+      if (!moved) break;
+    }
+  }
+
+  function bindValueLabelDrag(node, stageEl, canDrag) {
+    node.addEventListener("pointerdown", (e) => {
+      if (typeof canDrag === "function" && !canDrag()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const key = node.dataset.key;
+      const baseX = Number(node.dataset.baseX);
+      const baseY = Number(node.dataset.baseY);
+      const off = valueLabelOffsets.get(key) || { dx: 0, dy: 0 };
+      valueLabelDrag = {
+        key,
+        baseX,
+        baseY,
+        startX: e.clientX,
+        startY: e.clientY,
+        origDx: off.dx,
+        origDy: off.dy,
+        w: node.offsetWidth,
+        h: node.offsetHeight,
+        stageEl,
+      };
+      node.setPointerCapture(e.pointerId);
+    });
+    node.addEventListener("pointermove", (e) => {
+      if (!valueLabelDrag || valueLabelDrag.key !== node.dataset.key) return;
+      e.preventDefault();
+      const stageW = valueLabelDrag.stageEl.clientWidth;
+      const stageH = valueLabelDrag.stageEl.clientHeight;
+      let dx = valueLabelDrag.origDx + (e.clientX - valueLabelDrag.startX);
+      let dy = valueLabelDrag.origDy + (e.clientY - valueLabelDrag.startY);
+      let left = valueLabelDrag.baseX + dx - valueLabelDrag.w / 2;
+      let top = valueLabelDrag.baseY + dy - valueLabelDrag.h / 2;
+      left = Math.max(2, Math.min(left, stageW - valueLabelDrag.w - 2));
+      top = Math.max(2, Math.min(top, stageH - valueLabelDrag.h - 2));
+      dx = left + valueLabelDrag.w / 2 - valueLabelDrag.baseX;
+      dy = top + valueLabelDrag.h / 2 - valueLabelDrag.baseY;
+      valueLabelOffsets.set(valueLabelDrag.key, { dx, dy });
+      node.style.left = left + "px";
+      node.style.top = top + "px";
+    });
+    const endDrag = (e) => {
+      if (!valueLabelDrag || valueLabelDrag.key !== node.dataset.key) return;
+      try { node.releasePointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      valueLabelDrag = null;
+    };
+    node.addEventListener("pointerup", endDrag);
+    node.addEventListener("pointercancel", endDrag);
+  }
+
+  function drawValueLabelOnCanvas(ctx, lab, left, top, nw, nh) {
+    const cs = getComputedStyle(lab);
+    const ink = cs.getPropertyValue("--vl-ink").trim() || cs.color || "#1f7a84";
+    const softBg = cs.backgroundColor && cs.backgroundColor !== "rgba(0, 0, 0, 0)"
+      ? cs.backgroundColor
+      : (cs.getPropertyValue("--vl-bg").trim() || "#e6f5f6");
+    const border = cs.getPropertyValue("--vl-border").trim() || ink;
+    const roundNo = lab.querySelector(".vl-round")?.textContent || "";
+    const numText = lab.querySelector(".vl-num")?.textContent || lab.textContent || "";
+    ctx.save();
+    ctx.fillStyle = softBg;
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1.5;
+    roundRectPath(ctx, left, top, nw, nh, nh / 2);
+    ctx.fill();
+    ctx.stroke();
+    const badgeR = Math.max(5, nh * 0.3);
+    const badgeCx = left + 4 + badgeR;
+    const badgeCy = top + nh / 2;
+    ctx.beginPath();
+    ctx.fillStyle = ink;
+    ctx.arc(badgeCx, badgeCy, badgeR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `bold ${Math.max(9, Math.round(nh * 0.42))}px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(roundNo, badgeCx, badgeCy + 0.5);
+    ctx.fillStyle = ink;
+    ctx.font = `bold ${Math.max(11, Math.round(nh * 0.52))}px 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif`;
+    ctx.textAlign = "left";
+    ctx.fillText(numText, badgeCx + badgeR + 4, badgeCy + 0.5);
+    ctx.restore();
+  }
+
+  function drawValueLabelLayer(ctx, layer, destX, destY, destW, destH, stageW, stageH) {
+    if (!layer || !stageW || !stageH) return;
+    const sx = destW / stageW;
+    const sy = destH / stageH;
+    layer.querySelectorAll(".value-label").forEach((lab) => {
+      drawValueLabelOnCanvas(
+        ctx,
+        lab,
+        destX + lab.offsetLeft * sx,
+        destY + lab.offsetTop * sy,
+        Math.max(28, lab.offsetWidth * sx),
+        Math.max(16, lab.offsetHeight * sy)
+      );
+    });
+  }
+
+  function layoutChartValueLabels(opts) {
+    const {
+      scope,
+      chart,
+      layer,
+      stage,
+      enabled,
+      entries,
+      getValue,
+      formatText,
+      getTitle,
+      canDrag,
+      maxVal,
+      compact,
+    } = opts;
+    if (!layer || !stage) return;
+    if (!enabled || !chart) {
+      layer.innerHTML = "";
+      return;
+    }
+    if (!entries.length) {
+      layer.innerHTML = "";
+      clearScopeValueLabelOffsets(scope);
+      valueLabelDataSigByScope.delete(scope);
+      return;
+    }
+
+    const dataSig = entries
+      .map(({ i, r }) => {
+        const di = entries.findIndex((e) => e.i === i);
+        const meta = chart.getDatasetMeta(di);
+        const nPts = meta && meta.data ? meta.data.length : 0;
+        const vals = [];
+        for (let pi = 0; pi < nPts; pi++) {
+          const v = getValue(r, pi);
+          vals.push(Number.isFinite(v) ? Math.round(v * 100) : "x");
+        }
+        return `${i}:${vals.join(",")}`;
+      })
+      .join("|");
+    if (dataSig !== valueLabelDataSigByScope.get(scope)) {
+      clearScopeValueLabelOffsets(scope);
+      valueLabelDataSigByScope.set(scope, dataSig);
+    }
+
+    const stageW = stage.clientWidth;
+    const stageH = stage.clientHeight;
+    const scale = chart.scales && chart.scales.r;
+    if (!scale || stageW < 8 || stageH < 8) return;
+    const cx = scale.xCenter;
+    const cy = scale.yCenter;
+    const n = entries.length;
+    const labelClass = compact ? "value-label value-label-sm" : "value-label";
+
+    const preferred = [];
+    entries.forEach(({ i: roundIdx, r }, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (!meta || !meta.data) return;
+      meta.data.forEach((pt, pi) => {
+        if (!pt || pt.skip) return;
+        const v = getValue(r, pi);
+        if (!Number.isFinite(v)) return;
+        const props = typeof pt.getProps === "function" ? pt.getProps(["x", "y"], true) : pt;
+        const x = props.x;
+        const y = props.y;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+        let ux = x - cx;
+        let uy = y - cy;
+        const len = Math.hypot(ux, uy) || 1;
+        ux /= len;
+        uy /= len;
+        const px = -uy;
+        const py = ux;
+        const t = Math.min(Math.max(v / maxVal, 0), 1);
+        const inward = (compact ? 10 : 20) + t * (compact ? 4 : 8);
+        const sideGap = compact ? (n >= 3 ? 18 : 14) : (n >= 3 ? 34 : 30);
+        const side = (di - (n - 1) / 2) * sideGap;
+        const radialBias = compact ? (di - (n - 1) / 2) * 2 : 0;
+        const baseX = x - ux * (inward + radialBias) + px * side;
+        const baseY = y - uy * (inward + radialBias) + py * side;
+        preferred.push({
+          key: valueLabelKey(scope, roundIdx, pi),
+          roundIdx,
+          baseX,
+          baseY,
+          text: formatText(v),
+          color: ROUND_COLORS[roundIdx].border,
+          ink: ROUND_COLORS[roundIdx].ink,
+          softBg: ROUND_COLORS[roundIdx].softBg,
+          title: getTitle(roundIdx, pi),
+        });
+      });
+    });
+
+    const measure = document.createElement("div");
+    measure.className = labelClass;
+    measure.style.visibility = "hidden";
+    measure.style.position = "absolute";
+    layer.appendChild(measure);
+    const fresh = [];
+    preferred.forEach((p) => {
+      measure.innerHTML = `<span class="vl-round">${p.roundIdx + 1}</span><span class="vl-num">${p.text}</span>`;
+      measure.style.setProperty("--vl-bg", p.softBg);
+      measure.style.setProperty("--vl-border", p.color);
+      measure.style.setProperty("--vl-ink", p.ink);
+      const w = Math.max(compact ? 28 : 44, measure.offsetWidth);
+      const h = Math.max(compact ? 14 : 24, measure.offsetHeight);
+      const hasOff = valueLabelOffsets.has(p.key);
+      const off = hasOff ? valueLabelOffsets.get(p.key) : { dx: 0, dy: 0 };
+      const item = {
+        ...p,
+        w,
+        h,
+        x: p.baseX + off.dx - w / 2,
+        y: p.baseY + off.dy - h / 2,
+        pinned: hasOff,
+      };
+      if (!hasOff) fresh.push(item);
+      p._item = item;
+    });
+    measure.remove();
+
+    if (fresh.length) {
+      resolveLabelCollisions(preferred.map((p) => p._item), stageW, stageH);
+      fresh.forEach((it) => {
+        valueLabelOffsets.set(it.key, {
+          dx: it.x + it.w / 2 - it.baseX,
+          dy: it.y + it.h / 2 - it.baseY,
+        });
+      });
+    }
+
+    layer.innerHTML = "";
+    preferred.forEach((p) => {
+      const off = valueLabelOffsets.get(p.key) || { dx: 0, dy: 0 };
+      const node = document.createElement("div");
+      node.className = labelClass;
+      node.dataset.key = p.key;
+      node.dataset.baseX = String(p.baseX);
+      node.dataset.baseY = String(p.baseY);
+      node.dataset.round = String(p.roundIdx);
+      node.innerHTML = `<span class="vl-round">${p.roundIdx + 1}</span><span class="vl-num">${p.text}</span>`;
+      node.title = p.title + "（ドラッグで移動）";
+      node.style.setProperty("--vl-bg", p.softBg);
+      node.style.setProperty("--vl-border", p.color);
+      node.style.setProperty("--vl-ink", p.ink);
+      layer.appendChild(node);
+      const w = node.offsetWidth;
+      const h = node.offsetHeight;
+      let left = p.baseX + off.dx - w / 2;
+      let top = p.baseY + off.dy - h / 2;
+      left = Math.max(2, Math.min(left, stageW - w - 2));
+      top = Math.max(2, Math.min(top, stageH - h - 2));
+      node.style.left = left + "px";
+      node.style.top = top + "px";
+      bindValueLabelDrag(node, stage, canDrag);
+    });
+
+    const live = new Set(preferred.map((p) => p.key));
+    const prefix = scope + ":";
+    Array.from(valueLabelOffsets.keys()).forEach((k) => {
+      if (k.startsWith(prefix) && !live.has(k)) valueLabelOffsets.delete(k);
+    });
+  }
+
+  function layoutOverallValueLabels() {
+    layoutChartValueLabels({
+      scope: "overall",
+      chart: overallChart,
+      layer: el.valueLabelLayer,
+      stage: el.overallStage,
+      enabled: boardMode === "chart" && appRole !== "write" && !!overallChart,
+      entries: activeRoundEntries(),
+      getValue: (r, pointIdx) => r.forcePercents[pointIdx],
+      formatText: (v) => `${Math.round(v * 10) / 10}%`,
+      getTitle: (roundIdx, pointIdx) => `${roundLabel(roundIdx)} / ${FORCES[pointIdx].name}`,
+      canDrag: () => annotateMode === "select" && boardMode === "chart",
+      maxVal: 100,
+      compact: false,
+    });
+    if (el.valueLabelLayer) {
+      el.valueLabelLayer.classList.toggle("locked", annotateMode !== "select");
+      el.valueLabelLayer.hidden = boardMode !== "chart";
+    }
+  }
+
+  function layoutItemValueLabels(forceIndex) {
+    const force = FORCES[forceIndex];
+    const chart = itemCharts[forceIndex];
+    const stage = document.getElementById(`itemStage${forceIndex}`);
+    const layer = document.getElementById(`valueLabelLayerItem${forceIndex}`);
+    if (!force || !chart || !stage || !layer) return;
+    layoutChartValueLabels({
+      scope: `item-${forceIndex}`,
+      chart,
+      layer,
+      stage,
+      enabled: true,
+      entries: activeRoundEntries(),
+      getValue: (r, pointIdx) => {
+        const id = force.itemIds[pointIdx];
+        return r.itemAverages[id];
+      },
+      formatText: (v) => (Math.round(v * 10) / 10).toFixed(1),
+      getTitle: (roundIdx, pointIdx) => {
+        const item = ITEMS[force.itemIds[pointIdx]];
+        return `${roundLabel(roundIdx)} / ${item.no}${item.short}`;
+      },
+      canDrag: () => true,
+      maxVal: 4,
+      compact: true,
+    });
+  }
+
+  function layoutAllItemValueLabels() {
+    FORCES.forEach((_, fi) => layoutItemValueLabels(fi));
+  }
+
+  function layoutPopupValueLabels(forceIndex) {
+    const force = FORCES[forceIndex];
+    if (!force || !popupChart || !el.forcePopupStage || !el.valueLabelLayerPopup) return;
+    layoutChartValueLabels({
+      scope: `popup-${forceIndex}`,
+      chart: popupChart,
+      layer: el.valueLabelLayerPopup,
+      stage: el.forcePopupStage,
+      enabled: true,
+      entries: activeRoundEntries(),
+      getValue: (r, pointIdx) => {
+        const id = force.itemIds[pointIdx];
+        return r.itemAverages[id];
+      },
+      formatText: (v) => (Math.round(v * 10) / 10).toFixed(1),
+      getTitle: (roundIdx, pointIdx) => {
+        const item = ITEMS[force.itemIds[pointIdx]];
+        return `${roundLabel(roundIdx)} / ${item.no}${item.short}`;
+      },
+      canDrag: () => true,
+      maxVal: 4,
+      compact: true,
+    });
+  }
+
+  function renderOverallChart() {
+    const ctx = document.getElementById("chartOverall");
+    const labels = FORCES.map((f) => f.name);
+    const entries = activeRoundEntries();
+    const multi = entries.length > 1;
+    const datasets = entries.map(({ i, r }, di) =>
+      chartDataset(roundLabel(i), r.forcePercents.map((v) => (Number.isFinite(v) ? Math.round(v * 10) / 10 : 0)), i, multi, di, entries.length)
+    );
+
+    if (overallChart) overallChart.destroy();
+    clearOverallValueLabels();
+    overallChart = new Chart(ctx, {
+      type: "radar",
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: {
+          onComplete: () => layoutOverallValueLabels(),
+        },
+        layout: {
+          padding: multi
+            ? { top: 64, bottom: 72, left: 88, right: 88 }
+            : { top: 52, bottom: 60, left: 76, right: 76 },
+        },
+        interaction: { mode: "nearest", intersect: false },
+        onClick: onOverallChartClick,
+        onHover: onOverallChartHover,
+        plugins: {
+          legend: chartLegendOptions("top", { fontSize: 15, box: 14, padding: 16 }),
+          tooltip: {
+            enabled: false,
+            external: externalChartTooltip,
+            callbacks: {
+              title: (items) => {
+                if (!items[0]) return "";
+                const name = String(items[0].label).replace(/,/g, "");
+                return name + "（クリックで詳細）";
+              },
+              label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%`,
+            },
+          },
+          datalabels: {
+            display: false,
+          },
+        },
+        scales: {
+          r: {
+            min: 0,
+            max: 100,
+            ticks: {
+              stepSize: 20,
+              backdropColor: "transparent",
+              font: { size: 12 },
+              callback: (v) => v + "%",
+            },
+            pointLabels: {
+              font: { size: 18, weight: "600" },
+              color: "#15555c",
+              padding: multi ? 28 : 22,
+              centerPointLabels: false,
+              callback(label) {
+                return splitForceLabel(label);
+              },
+            },
+            grid: { color: "rgba(90,113,121,0.25)" },
+            angleLines: { color: "rgba(90,113,121,0.25)" },
+          },
+        },
+      },
+    });
+    requestAnimationFrame(() => {
+      syncDrawCanvasSize();
+      layoutOverallValueLabels();
+    });
+  }
+
+  function forceItemsTableHtml(force, entries) {
+    const head = entries.map(({ i }) =>
+      `<th><span class="swatch" style="background:${ROUND_COLORS[i].softBg};outline:1.5px solid ${ROUND_COLORS[i].border};outline-offset:-1px;"></span>${roundLabel(i)}</th>`
+    ).join("");
+    const rows = force.itemIds.map((id) => {
+      const item = ITEMS[id];
+      const cells = entries.map(({ r }) => {
+        const v = r.itemAverages[id];
+        return `<td class="num">${Number.isFinite(v) ? v.toFixed(2) : "—"}</td>`;
+      }).join("");
+      return `<tr>
+        <td class="row-label">
+          <span class="item-name">${item.no}${item.short}</span>
+          <span class="item-desc">${escapeHtml(item.desc)}学級です。</span>
+        </td>
+        ${cells}
+      </tr>`;
+    }).join("");
+    const forceIdx = FORCES.indexOf(force);
+    const forceCells = entries.map(({ r }) => {
+      const v = r.forcePercents[forceIdx];
+      return `<td class="num"><strong>${Number.isFinite(v) ? v.toFixed(1) + "%" : "—"}</strong></td>`;
+    }).join("");
+    const forceRow = `<tr><td class="row-label"><strong>${escapeHtml(force.name)}</strong><span class="item-desc">上の3つの平均から出した％</span></td>${forceCells}</tr>`;
+    return `<table><thead><tr><th class="row-label">どんな行動？</th>${head}</tr></thead><tbody>${rows}${forceRow}</tbody></table>`;
+  }
+
+  function renderItemCharts() {
+    el.itemCharts.innerHTML = "";
+    const entries = activeRoundEntries();
+    const multi = entries.length > 1;
+    FORCES.forEach((force, fi) => {
+      const box = document.createElement("div");
+      box.className = "item-block";
+      const canvasId = `chartItem${fi}`;
+      box.innerHTML = `
+        <div>
+          <h3>${force.name}</h3>
+          <div class="chart-wrap" id="itemStage${fi}">
+            <canvas id="${canvasId}"></canvas>
+            <div id="valueLabelLayerItem${fi}" class="value-label-layer" aria-label="数値ラベル（ドラッグで移動可）"></div>
+          </div>
+          <div class="item-block-actions no-print">
+            <button type="button" class="secondary" data-export-force="${fi}">この力を画像で書き出す</button>
+          </div>
+        </div>
+        <div class="item-side-table">${forceItemsTableHtml(force, entries)}</div>
+      `;
+      el.itemCharts.appendChild(box);
+      box.querySelectorAll("[data-export-force]").forEach((btn) => {
+        btn.addEventListener("click", () => exportItemChartsAsImage(Number(btn.dataset.exportForce)));
+      });
+
+      const labels = force.itemIds.map((id) => ITEMS[id].no + ITEMS[id].short);
+      const datasets = entries.map(({ i, r }, di) =>
+        chartDataset(
+          roundLabel(i),
+          force.itemIds.map((id) => {
+            const v = r.itemAverages[id];
+            return Number.isFinite(v) ? Math.round(v * 100) / 100 : 0;
+          }),
+          i,
+          multi,
+          di,
+          entries.length,
+          "item"
+        )
+      );
+
+      if (itemCharts[fi]) itemCharts[fi].destroy();
+      itemCharts[fi] = new Chart(document.getElementById(canvasId), {
+        type: "radar",
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: {
+            onComplete: () => layoutItemValueLabels(fi),
+          },
+          layout: {
+            padding: multi
+              ? { top: 18, bottom: 28, left: 20, right: 20 }
+              : { top: 12, bottom: 22, left: 14, right: 14 },
+          },
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: chartLegendOptions("bottom", { fontSize: 12, box: 12, padding: 10 }),
+            tooltip: {
+              enabled: false,
+              external: externalChartTooltip,
+              callbacks: {
+                title: (items) => {
+                  if (!items[0]) return "";
+                  const item = ITEMS[force.itemIds[items[0].dataIndex]];
+                  return item ? `${item.no}${item.short}：${item.desc}` : "";
+                },
+                label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}`,
+              },
+            },
+            datalabels: { display: false },
+          },
+          scales: {
+            r: {
+              min: 0,
+              max: 4,
+              ticks: { stepSize: 1, backdropColor: "transparent" },
+              pointLabels: { font: { size: 11 }, padding: 10 },
+              grid: { color: "rgba(90,113,121,0.25)" },
+              angleLines: { color: "rgba(90,113,121,0.25)" },
+            },
+          },
+        },
+      });
+    });
+    requestAnimationFrame(() => layoutAllItemValueLabels());
+  }
+
+  function renderScoreMapTable() {
+    el.scoreBody.innerHTML = "";
+    scoreMap.forEach((row, idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input type="text" data-score-text="${idx}" value="${escapeHtml(row.text)}" /></td>
+        <td style="width:90px;"><input type="number" min="0" max="4" step="1" data-score-val="${idx}" value="${row.score}" /></td>
+        <td style="width:70px;"><button type="button" class="danger" data-score-del="${idx}">削除</button></td>
+      `;
+      el.scoreBody.appendChild(tr);
+    });
+
+    el.scoreBody.querySelectorAll("[data-score-text]").forEach((input) => {
+      input.addEventListener("change", () => {
+        scoreMap[Number(input.dataset.scoreText)].text = input.value.trim();
+      });
+    });
+    el.scoreBody.querySelectorAll("[data-score-val]").forEach((input) => {
+      input.addEventListener("change", () => {
+        scoreMap[Number(input.dataset.scoreVal)].score = Number(input.value);
+      });
+    });
+    el.scoreBody.querySelectorAll("[data-score-del]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        scoreMap.splice(Number(btn.dataset.scoreDel), 1);
+        renderScoreMapTable();
+      });
+    });
+  }
+
+  function reaggregateAllWithCurrentScores() {
+    rounds.forEach((r, i) => {
+      if (!r) return;
+      rematerializeRound(i, r.columnMap || getManualColumnMap());
+    });
+    renderRoundSlots();
+    refreshAll();
+  }
+
+  function on(elNode, event, handler) {
+    if (elNode) elNode.addEventListener(event, handler);
+  }
+
+  on(el.btnRemap, "click", () => {
+    const map = getManualColumnMap();
+    const target = lastRoundIndex >= 0 ? lastRoundIndex : rounds.findIndex(Boolean);
+    if (target < 0) {
+      showMsg("先にExcelを読み込んでください。", "error");
+      return;
+    }
+    if (!rounds[target]) {
+      showMsg("対象の回次データがありません。", "error");
+      return;
+    }
+    rematerializeRound(target, map);
+    rounds.forEach((r, i) => {
+      if (!r || i === target) return;
+      if (JSON.stringify(r.rawHeaders) === JSON.stringify(rounds[target].rawHeaders)) {
+        rematerializeRound(i, map);
+      }
+    });
+    renderRoundSlots();
+    refreshAll();
+    const mapped = map.filter((c) => c >= 0).length;
+    showMsg(`手動マッピングで再集計しました（${mapped}/15 項目）。`, mapped === 15 ? "ok" : "warn");
+  });
+
+  on(el.btnAddScore, "click", () => {
+    scoreMap.push({ text: "", score: 1 });
+    renderScoreMapTable();
+  });
+
+  on(el.btnResetScore, "click", () => {
+    scoreMap = DEFAULT_SCORE_MAP.map((x) => ({ ...x }));
+    renderScoreMapTable();
+    reaggregateAllWithCurrentScores();
+    showMsg("点数対応を初期値に戻し、再集計しました。", "ok");
+  });
+
+  on(el.btnPrint, "click", () => {
+    updatePrintTitle();
+    window.print();
+  });
+
+  ["metaGrade", "metaClass", "metaTeacher", "metaNote"].forEach((id) => {
+    const node = document.getElementById(id);
+    on(node, "input", updatePrintTitle);
+  });
+
+  on(el.scoreBody, "change", () => {
+    el.scoreBody.querySelectorAll("[data-score-text]").forEach((input) => {
+      scoreMap[Number(input.dataset.scoreText)].text = input.value.trim();
+    });
+    el.scoreBody.querySelectorAll("[data-score-val]").forEach((input) => {
+      scoreMap[Number(input.dataset.scoreVal)].score = Number(input.value);
+    });
+    reaggregateAllWithCurrentScores();
+  });
+
+  function makeSampleRows(seedBias) {
+    const headers = [
+      "ID",
+      "開始時刻",
+      "完了時刻",
+      ...ITEMS.map((it) => `${it.no}${it.short}：${it.keywords[0]}`),
+    ];
+    const choice = ["そう思わない", "あまりそう思わない", "そう思う", "とてもそう思う"];
+    const rows = [];
+    for (let s = 0; s < 28; s++) {
+      const row = [`R${s + 1}`, "", ""];
+      for (let i = 0; i < 15; i++) {
+        const base = 1.5 + seedBias + (i % 3) * 0.2 + ((s + i) % 5) * 0.15;
+        const idx = Math.max(0, Math.min(3, Math.round(base)));
+        row.push(choice[idx]);
+      }
+      rows.push(row);
+    }
+    return { headers, rows };
+  }
+
+  on(el.btnSample, "click", () => {
+    // Load round 1 and 2 sample for comparison demo
+    const s1 = makeSampleRows(0.4);
+    const s2 = makeSampleRows(0.9);
+    lastHeaders = s1.headers;
+    lastRows = s1.rows;
+    lastRoundIndex = 0;
+
+    const map1 = autoMapColumns(s1.headers);
+    const a1 = aggregate(s1.rows, map1);
+    rounds[0] = {
+      round: 1,
+      fileName: "サンプル_第1回.xlsx",
+      responseCount: a1.responseCount,
+      itemAverages: a1.itemAverages,
+      forcePercents: a1.forcePercents,
+      rawHeaders: s1.headers,
+      rawRows: s1.rows,
+      columnMap: map1,
+    };
+
+    const map2 = autoMapColumns(s2.headers);
+    const a2 = aggregate(s2.rows, map2);
+    rounds[1] = {
+      round: 2,
+      fileName: "サンプル_第2回.xlsx",
+      responseCount: a2.responseCount,
+      itemAverages: a2.itemAverages,
+      forcePercents: a2.forcePercents,
+      rawHeaders: s2.headers,
+      rawRows: s2.rows,
+      columnMap: map2,
+    };
+
+    buildManualMapUI(s1.headers, map1);
+    if (el.btnRemap) el.btnRemap.disabled = false;
+    renderRoundSlots();
+    refreshAll();
+    showMsg("サンプル（第1回・第2回）を読み込みました。実際のForms Excelも同じ手順で登録できます。", "ok");
+  });
+
+  on(el.forceModalClose, "click", closeForcePopup);
+  on(el.forceModal, "click", (e) => {
+    if (e.target === el.forceModal) closeForcePopup();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && el.forceModal && el.forceModal.classList.contains("open")) {
+      closeForcePopup();
+    }
+  });
+  document.addEventListener("scroll", hideChartTooltip, true);
+  window.addEventListener("resize", hideChartTooltip);
+
+  on(el.btnEnterData, "click", () => setAppRole("data"));
+  on(el.btnEnterWrite, "click", () => setAppRole("write"));
+  on(el.btnBackHome, "click", () => setAppRole("home"));
+  on(el.btnBoardChart, "click", () => {
+    if (appRole === "write") return;
+    setBoardMode("chart");
+  });
+  on(el.btnWritePickPhoto, "click", () => {
+    if (el.photoInput) el.photoInput.click();
+  });
+  on(el.photoInput, "change", () => {
+    const file = el.photoInput.files && el.photoInput.files[0];
+    if (file) loadBoardPhoto(file);
+    if (el.photoInput) el.photoInput.value = "";
+  });
+  on(el.btnClearPhoto, "click", clearBoardPhoto);
+  on(el.btnExportBoard, "click", () => {
+    exportBoardAsImage();
+  });
+  on(el.btnExportItems, "click", () => {
+    exportItemChartsAsImage();
+  });
+
+  // init — Excel枠を最優先で描画（失敗しても静的HTMLのボタンは残す）
+  try {
+    if (el.rounds) {
+      el.rounds.querySelectorAll(".round-card").forEach((card, i) => {
+        if (!card.dataset.round) card.dataset.round = String(i);
+        bindRoundCardEvents(card);
+      });
+    }
+    renderRoundSlots();
+  } catch (err) {
+    console.error(err);
+    if (el.uploadMsg) {
+      el.uploadMsg.className = "msg show error";
+      el.uploadMsg.textContent = "Excel枠の初期化エラー: " + (err && err.message ? err.message : err);
+    }
+  }
+  try {
+    renderScoreMapTable();
+    buildManualMapUI([], new Array(15).fill(-1));
+    initAnnotateBoard();
+    const initialRole = new URLSearchParams(window.location.search).get("role");
+    setAppRole(initialRole || "home");
+  } catch (err) {
+    console.error(err);
+    if (el.uploadMsg) {
+      el.uploadMsg.className = "msg show error";
+      el.uploadMsg.textContent = "初期化エラー: " + (err && err.message ? err.message : err);
+    }
+  }
+})();
+  </script>
+</body>
+</html>
